@@ -237,7 +237,7 @@ npm run live                      ZK 증명 4508 bytes, 21.8s
 ## 빌드 및 실행
 
 ```bash
-compact compile contracts/smoke.compact build/smoke
+compact compile contracts/track_record.compact build/track_record
 ```
 
 `build/` 아래에 `contract/`(TypeScript API), `zkir/`(ZK 중간표현),
