@@ -22,22 +22,33 @@ const NET = process.env.MN_NETWORK ?? 'preview';
 const CFG = {
   preview: { indexer: 'https://indexer.preview.midnight.network/api/v4/graphql',
              indexerWs: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
-             node: 'https://rpc.preview.midnight.network' },
+             node: 'https://rpc.preview.midnight.network', zswapNet: NetworkId.TestNet },
   preprod: { indexer: 'https://indexer.preprod.midnight.network/api/v4/graphql',
              indexerWs: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
-             node: 'https://rpc.preprod.midnight.network' },
+             node: 'https://rpc.preprod.midnight.network', zswapNet: NetworkId.TestNet },
+  // 로컬 devnet (midnight-local-dev). 파우셋이 필요 없다 — genesis 지갑이 이미 펀딩돼 있다.
+  undeployed: { indexer: 'http://127.0.0.1:8088/api/v4/graphql',
+                indexerWs: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
+                node: 'http://127.0.0.1:9944', zswapNet: NetworkId.Undeployed },
 }[NET];
-const PROOF = process.env.PROOF_SERVER ?? 'http://localhost:6300';
+
+// 로컬 devnet 배포용 시드. midnight-local-dev 의 genesis(...001) 가 이 주소로
+// NIGHT 를 보내고 DUST 를 등록해 준다 (fund-ptr.ts). 로컬 체인에서만 유효하다.
+const LOCAL_SEED = process.env.PTR_SEED
+  ?? '0000000000000000000000000000000000000000000000000000000000000002';
+const PROOF = process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300';
 const SEED_FILE = `wallet-${NET}.seed`;
 const OUT = `deployed-${NET}.json`;
 
-if (!existsSync(SEED_FILE)) { console.error(`시드 없음: 먼저 node src/wallet-init.mjs`); process.exit(1); }
+const seed = NET === 'undeployed'
+  ? LOCAL_SEED
+  : (existsSync(SEED_FILE) ? readFileSync(SEED_FILE, 'utf8').trim() : null);
+if (!seed) { console.error(`시드 없음: 먼저 node src/wallet-init.mjs`); process.exit(1); }
 setNetworkId(NET);
 
 // ── 지갑 ────────────────────────────────────────────────────────────────────
 const wallet = await WalletBuilder.build(
-  CFG.indexer, CFG.indexerWs, PROOF, CFG.node,
-  readFileSync(SEED_FILE, 'utf8').trim(), NetworkId.TestNet, 'warn');
+  CFG.indexer, CFG.indexerWs, PROOF, CFG.node, seed, CFG.zswapNet, 'warn');
 wallet.start();
 
 console.log(`[${NET}] 지갑 동기화 대기...`);
@@ -59,7 +70,9 @@ console.log(`  잔액 ${bal}`);
 const hasFunds = Object.values(state.balances ?? {}).some((v) => v > 0n);
 if (!hasFunds) {
   console.log(`\n❌ 잔액이 없어 배포할 수 없습니다.`);
-  console.log(`   파우셋: https://midnight-tmnight-${NET}.nethermind.dev/`);
+  console.log(NET === 'undeployed'
+    ? '   로컬 devnet 이 기동돼 있는지 확인하세요 (docker compose -f standalone.yml up -d)'
+    : `   파우셋: https://midnight-tmnight-${NET}.nethermind.dev/`);
   console.log(`   주소  : ${state.address}`);
   await wallet.close(); process.exit(2);
 }

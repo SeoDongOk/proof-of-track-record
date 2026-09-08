@@ -76,7 +76,7 @@ Exception: potential witness-value disclosure must be declared but is not:
 - [x] **로컬 실행 데모** (`npm run demo`) — 적대적 테스트 포함
 - [x] **실제 ZK 증명 생성** (`npm run live`) — 증명 서버 8.1.0 연동
 - [x] **실제 포트폴리오 데이터로 증명** (`npm run export && npm run live:real`)
-- [ ] 테스트넷 배포 — 스크립트 완성, 파우셋 입금 대기 (`npm run deploy`)
+- [ ] 온체인 배포 — 로컬 devnet 기동·펀딩까지 성공, 지갑 SDK 세대 불일치로 미완
 
 ### 데모 결과
 
@@ -197,16 +197,46 @@ npm run live:real    # 배치 0, 1 각각 실제 ZK 증명 생성
 `proofData -> proofDataIntoSerializedPreimage -> /prove` 로 끝난다.
 심사위원이 지갑 설정 없이 `npm run live` 만으로 실제 증명을 재현할 수 있다.
 
-## 테스트넷 배포 (진행 중)
+## 온체인 배포 (미완, 원인 규명됨)
+
+배포는 아직 안 된다. 원인은 코드 버그가 아니라 **SDK 세대 불일치**다.
+
+### 로컬 devnet 은 정상 기동한다
 
 ```bash
-npm run wallet       # Preview 테스트넷 지갑 생성 (시드는 .gitignore)
-# -> 출력된 주소로 https://midnight-tmnight-preview.nethermind.dev/ 에서 tNIGHT 수령
-npm run deploy       # 배포, deployed-preview.json 에 컨트랙트 주소 기록
+git clone https://github.com/midnightntwrk/midnight-local-dev.git
+cd midnight-local-dev && npm install          # Node >= 22 필요
+docker compose -f standalone.yml up -d        # node:9944 indexer:8088 proof:6300
 ```
 
-배포 스크립트는 프로바이더 6종(private state / indexer / zk config / proof /
-wallet / midnight) 배선까지 검증됐고, 파우셋 입금 후 실행 예정이다.
+genesis 지갑(시드 `0000…0001`)이 이미 펀딩돼 있어 파우셋이 필요 없다.
+실제로 배포용 계정에 NIGHT 500조 + DUST 1.25e24 를 전송하고 DUST 등록까지 성공했다.
+
+### 막힌 지점
+
+`src/deploy.mjs` 는 `@midnight-ntwrk/wallet` 5.0.0 을 쓰는데, 이 지갑은
+**Zswap(shielded) 전용**이다. 확인한 사실:
+
+| 확인 | 결과 |
+|---|---|
+| `wallet.state()` 필드 | shielded 만. DUST 잔액 필드가 없다 |
+| 인덱서 v4 GraphQL | unshielded 잔액 쿼리 없음 (38개 필드 전수 확인) |
+| 같은 시드의 shielded 주소 | wallet 5.0.0 과 testkit-js 가 **서로 다른 주소**를 파생 |
+
+현재 Midnight 은 수수료를 **DUST** 로 낸다. NIGHT(unshielded) 를 등록해야
+DUST 가 생성되는 모델인데, wallet 5.0.0 에는 unshielded/DUST 개념이 없다.
+로컬 devnet 도구는 `@midnight-ntwrk/testkit-js` 의 `FluentWalletBuilder`
+(shielded + unshielded + dust 3-키 모델)를 쓴다. 두 SDK 의 키 파생이 달라
+펀딩된 주소와 배포 지갑 주소가 일치하지 않는다.
+
+### 해결 방향
+
+`deploy.mjs` 의 지갑 계층을 `@midnight-ntwrk/wallet` → `testkit-js`
+(또는 `wallet-sdk-facade`) 로 교체하면 된다. 회로·증명 쪽은 영향이 없다.
+증명 생성은 이미 동작하므로 배포는 트랜잭션 서명/수수료 계층만 남은 문제다.
+
+**해커톤 규정상 로컬 devnet 이 허용되고, 실제 ZK 증명이 이미 동작하므로
+제출 요건은 충족한다.** 온체인 배포는 가산점 항목이다.
 
 ## 개발 환경
 
