@@ -23,6 +23,7 @@
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "^4.1.1",
     "@midnight-ntwrk/midnight-js-types": "^4.1.1",
     "@midnight-ntwrk/wallet": "^5.0.0",
-    "@midnight-ntwrk/wallet-api": "^5.0.0"
+    "@midnight-ntwrk/wallet-api": "^5.0.0",
+    "@midnight-ntwrk/wallet-sdk-hd": "^3.0.2"
   }
 }
