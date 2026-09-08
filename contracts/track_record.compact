@@ -87,8 +87,12 @@ export circuit revealMatchesCommitment(): Boolean {
 export circuit recordTrade(): [] {
   assert(strategyLocked, "commit strategy first");
   const t = nextTrade();
+  // insert() 는 값을 넣으면 트리가 리프 해싱을 한다.
+  // insertHash() 는 리프 해싱을 건너뛰는데, TypeScript 쪽 findPathForLeaf 는
+  // 항상 리프 해싱을 적용하므로 짝이 맞지 않는다. insert() 로 규약을 통일한다.
+  // 넣는 값 자체가 이미 거래의 해시이므로 내용은 드러나지 않는다.
   const leaf = persistentHash<Trade>(t);
-  tradeLog.insertHash(disclose(leaf));
+  tradeLog.insert(disclose(leaf));
   tradeCount.increment(1);
 }
 
@@ -124,7 +128,7 @@ export circuit proveReturnAtLeast(claimedFloor: Uint<64>): [] {
            "merkle path does not match the trade");
     // 루트는 이미 원장에 공개돼 있다. "어느 루트에 대해 증명하는가"가
     // 드러나는 것은 의도된 공개이므로 disclose() 로 명시한다.
-    assert(tradeLog.checkRoot(disclose(merkleTreePathRootNoLeafHash<10>(paths[i]))),
+    assert(tradeLog.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(paths[i]))),
            "trade is not in the committed log");
   }
 

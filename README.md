@@ -66,16 +66,46 @@ Exception: potential witness-value disclosure must be declared but is not:
 
 ## 상태
 
-컨트랙트 4개 회로 완성, 컴파일 검증 완료. CLI 데모 작업 중.
+**4개 회로 전부 동작 검증 완료.** 참인 주장은 통과하고 거짓 주장·위조는 거부된다.
 
-- [x] Compact 툴체인 (네트워크와 맞춘 **0.31.1**, language_version 0.23)
-- [x] 증명 서버용 Docker 구동
+- [x] Compact 툴체인 (네트워크와 맞춘 **0.31.1**, language_version 0.23, runtime 0.16.0)
 - [x] **회로 1** 전략 사전 커밋 `commitStrategy` / `revealMatchesCommitment`
 - [x] **회로 2** 거래 머클 커밋 `recordTrade`
 - [x] **회로 3** 수익률 임계값 증명 `proveReturnAtLeast`
 - [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
-- [ ] CLI 데모 (증명 생성 → 검증)
+- [x] **로컬 실행 데모** (`npm run demo`) — 적대적 테스트 포함
+- [ ] 증명 서버 연동 (실제 ZK 증명 생성)
 - [ ] 테스트넷 배포
+
+### 데모 결과
+
+```
+── 3) 수익률 임계값 증명 ──────────────────────────
+   머클 경로 확보: 8 / 8
+   실제 손익 합계: +590bp (인코딩 800590)
+   ✅ 참인 주장 (≥ +500bp) 통과   원장 기록: 800500 (8건 근거)
+   ✅ 거짓 주장 (≥ +900bp) 거부: failed assert: claimed floor not met
+   ✅ 위조 거래 거부: failed assert: merkle path does not match the trade
+
+── 4) 리스크 한도 증명 ────────────────────────────
+   ✅ "종목당 ≤ 10%" 증명 통과   원장 기록: 1000 bp
+   ✅ 거짓 한도 (≤ 7%) 거부: failed assert: position exceeds the risk limit
+
+── 최종 공개 원장 ─────────────────────────────────
+   증명된 손익하한: 800500  (실제값 800590 은 비공개)
+   증명된 비중상한: 1000 bp (실제 비중은 비공개)
+```
+
+원장에 남는 것은 **"손익 합계가 +500bp 이상"** 이라는 사실뿐이다.
+실제값 +590bp 도, 8건의 개별 손익도 공개되지 않는다.
+
+적대적 테스트 3종을 모두 통과한다.
+
+| 시도 | 결과 |
+|---|---|
+| 실제보다 높은 수익률 주장 | `claimed floor not met` 으로 거부 |
+| 로그에 없는 거래를 끼워넣어 수익률 부풀리기 | `merkle path does not match the trade` 로 거부 |
+| 실제보다 낮은 리스크 한도 주장 | `position exceeds the risk limit` 으로 거부 |
 
 ### 회로 규모
 

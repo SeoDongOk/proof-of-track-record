@@ -1,0 +1,13 @@
+{
+  "name": "proof-of-track-record",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "compact compile contracts/track_record.compact build/track_record",
+    "demo": "node src/demo.mjs"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.16.0"
+  }
+}
