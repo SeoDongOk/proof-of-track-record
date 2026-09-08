@@ -196,3 +196,77 @@ export circuit proveMaxWeight(limitBps: Uint<32>): [] {
 
   provenMaxWeightBps.write(disclose(limitBps));
 }
+
+// ── 회로 5: NAV 델타 증명 (완전성 보장) ────────────────────────────────────
+//
+// 회로 3(거래 로그 합계)에는 구멍이 있다. 로그에 무엇을 넣을지 고르는 주체가
+// 트레이더 본인이므로, 손실 거래를 애초에 커밋하지 않으면 남은 것만으로
+// 참인 주장을 만들 수 있다. ZK 는 "계산이 정직했다"를 증명할 뿐
+// "입력이 전부다"를 증명하지 않는다.
+//
+// NAV(계좌 순자산) 델타는 이 구멍을 막는다. 거래를 빼도 잔고는 그대로다.
+// 기간 시작 NAV 를 미리 커밋해 두므로 사후에 낮춰 수익률을 부풀릴 수도 없다.
+
+/** 기간 시작 시점 NAV 커밋 */
+export ledger navOpenCommitment: Bytes<32>;
+/** 기간 종료 시점 NAV 커밋 */
+export ledger navCloseCommitment: Bytes<32>;
+export ledger navPeriodOpen: Boolean;
+export ledger navPeriodClosed: Boolean;
+/** 검증된 수익률 하한 (오프셋 인코딩: 10000 = 0%) */
+export ledger provenReturnBps: Uint<16>;
+
+/** 수익률 오프셋. 10000 = 0bp, 65535 상한이므로 최대 +555% 까지 주장 가능 */
+export circuit returnOffset(): Uint<16> {
+  return 10000;
+}
+
+// NAV 는 Uint<48> (약 2.8e14). 통화 최소단위 기준이면 충분하고,
+// Uint<48> * Uint<16> = Uint<64> 로 곱셈이 오버플로 없이 들어간다.
+witness navOpenValue(): Uint<48>;
+witness navOpenSalt(): Bytes<32>;
+witness navCloseValue(): Uint<48>;
+witness navCloseSalt(): Bytes<32>;
+
+/** 기간 시작. 결과를 알기 전에 NAV 를 못 박는다. */
+export circuit openNavPeriod(): [] {
+  assert(!navPeriodOpen, "nav period already open");
+  navOpenCommitment.write(
+    disclose(persistentCommit<Uint<48>>(navOpenValue(), navOpenSalt())));
+  navPeriodOpen.write(true);
+}
+
+/** 기간 종료. */
+export circuit closeNavPeriod(): [] {
+  assert(navPeriodOpen, "open a nav period first");
+  assert(!navPeriodClosed, "nav period already closed");
+  navCloseCommitment.write(
+    disclose(persistentCommit<Uint<48>>(navCloseValue(), navCloseSalt())));
+  navPeriodClosed.write(true);
+}
+
+/**
+ * "이 기간 수익률이 claimedBps 이상"을 증명한다. NAV 값 자체는 공개하지 않는다.
+ *
+ * r = (close - open) / open 이므로, claimedBps 를 오프셋 인코딩(10000=0%)하면
+ *   close * 10000 >= open * claimedBps
+ * 가 곧 r >= (claimedBps - 10000) 이다. 부호 없는 정수만으로 손실도 표현된다.
+ */
+export circuit proveNavReturnAtLeast(claimedBps: Uint<16>): [] {
+  assert(navPeriodOpen, "no nav period");
+  assert(navPeriodClosed, "nav period not closed");
+
+  const o = navOpenValue();
+  const c = navCloseValue();
+
+  assert(disclose(persistentCommit<Uint<48>>(o, navOpenSalt())) == navOpenCommitment,
+         "open nav does not match its commitment");
+  assert(disclose(persistentCommit<Uint<48>>(c, navCloseSalt())) == navCloseCommitment,
+         "close nav does not match its commitment");
+  assert(o > 0, "open nav must be positive");
+
+  // Uint<48> * Uint<16> = Uint<64>. 오버플로 없이 교차곱으로 비교한다.
+  assert(c * returnOffset() >= o * claimedBps, "claimed return not met");
+
+  provenReturnBps.write(disclose(claimedBps));
+}

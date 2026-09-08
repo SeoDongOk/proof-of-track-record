@@ -73,6 +73,7 @@ Exception: potential witness-value disclosure must be declared but is not:
 - [x] **회로 2** 거래 머클 커밋 `recordTrade`
 - [x] **회로 3** 수익률 임계값 증명 `proveReturnAtLeast`
 - [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
+- [x] **회로 5** NAV 델타 증명 `openNavPeriod` / `closeNavPeriod` / `proveNavReturnAtLeast`
 - [x] **로컬 실행 데모** (`npm run demo`) — 적대적 테스트 포함
 - [x] **실제 ZK 증명 생성** (`npm run live`) — 증명 서버 8.1.0 연동
 - [x] **실제 포트폴리오 데이터로 증명** (`npm run export && npm run live:real`)
@@ -133,6 +134,44 @@ Exception: potential witness-value disclosure must be declared but is not:
 
 1. 제출된 머클 경로의 잎이 그 거래의 해시와 같다 — 거래 바꿔치기 차단
 2. 그 경로의 루트를 원장이 알고 있다 — 없던 거래 끼워넣기 차단
+
+## 신뢰 모델 — 이 시스템이 막는 것과 못 막는 것
+
+ZK 는 "계산이 정직했다"를 증명하지 **"입력이 전부다"를 증명하지 않는다.**
+회로 3(거래 로그 합계)에는 그래서 구멍이 있다. 로그에 무엇을 넣을지 고르는
+주체가 트레이더 본인이므로, **손실 거래를 애초에 커밋하지 않으면**
+남은 것만으로 참인 주장을 만들 수 있다.
+
+회로 5(NAV 델타)가 이 구멍을 막는다. 기간 시작·종료의 **계좌 순자산**을
+커밋하면 거래를 빼도 잔고는 그대로다.
+
+```
+실제 거래: 5승 3패, 합계 -400bp    NAV 100,000,000 -> 96,000,000
+
+[1] 이긴 5건만 골라낸 주장 (+950bp)  -> 거부: claimed return not met
+[2] 실제 성과 주장 (>= -400bp)       -> 통과, 원장 기록 9600
+[3] 1bp 만 부풀려도 (>= -399bp)      -> 거부: claimed return not met
+[4] 시작 NAV 를 사후에 절반으로       -> 거부: open nav does not match its commitment
+```
+
+`npm run nav` 로 재현. `npm run nav:proof` 는 실제 ZK 증명을 만든다
+(4508 bytes, 7.9s — 머클 경로가 없어 회로 3보다 가볍다).
+
+### 그래도 남는 신뢰 가정
+
+| 막는다 | 못 막는다 |
+|---|---|
+| 커밋한 값에 대해 거짓말하기 | NAV 자체를 처음부터 조작하기 |
+| 손실 거래를 빼고 계산하기 | |
+| 사후에 시작 잔고 낮추기 | |
+| 전략을 사후에 바꾸기 | |
+
+NAV 를 통째로 지어내는 것까지 막으려면 **브로커 서명**이 필요하다.
+체결·잔고를 거래소가 서명하고 회로가 그 서명을 검증하면 자기증명이 아니게 된다.
+Compact 0.34 의 `secp256k1EcdsaVerify` 로 구현 가능하나, 이 프로젝트는
+현재 네트워크에 맞춰 0.31.1 을 쓰고 있어 다음 과제로 남긴다.
+(0.31.1 에는 `ecAdd`/`ecMul`/`ecMulGenerator`/`hashToCurve` 만 있어
+Schnorr 을 직접 조립해야 한다.)
 
 ## 실제 포트폴리오로 증명하기
 
