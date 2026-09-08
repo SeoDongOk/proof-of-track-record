@@ -75,7 +75,8 @@ Exception: potential witness-value disclosure must be declared but is not:
 - [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
 - [x] **로컬 실행 데모** (`npm run demo`) — 적대적 테스트 포함
 - [x] **실제 ZK 증명 생성** (`npm run live`) — 증명 서버 8.1.0 연동
-- [ ] 테스트넷 배포
+- [x] **실제 포트폴리오 데이터로 증명** (`npm run export && npm run live:real`)
+- [ ] 테스트넷 배포 — 스크립트 완성, 파우셋 입금 대기 (`npm run deploy`)
 
 ### 데모 결과
 
@@ -132,6 +133,76 @@ Exception: potential witness-value disclosure must be declared but is not:
 
 1. 제출된 머클 경로의 잎이 그 거래의 해시와 같다 — 거래 바꿔치기 차단
 2. 그 경로의 루트를 원장이 알고 있다 — 없던 거래 끼워넣기 차단
+
+## 실제 포트폴리오로 증명하기
+
+위 데모는 샘플 8건이다. 실제 데이터로도 돌아간다.
+[Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL) 의
+페이퍼 트레이딩 계좌(S&P 500 16종목, 2026-09-08 진입)를 그대로 물렸다.
+
+```bash
+npm run export       # ~/.paper_trading/state.json -> trades.json (시가평가 손익, bps)
+npm run live:real    # 배치 0, 1 각각 실제 ZK 증명 생성
+```
+
+체리피킹을 막기 위해 티커 **알파벳순**으로 8건씩 잘라 **두 배치 모두** 증명한다.
+
+```
+배치0 [COP,CRM,CVX,DE,FCX,GILD,JNJ,MRK]    실제 -356bp -> 주장 "≥ -400bp"  ✅ 4508B / 32.9s
+배치1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  실제 -285bp -> 주장 "≥ -300bp"  ✅ 4508B / 31.9s
+
+거짓 주장 "≥ 0bp"  -> 회로 거부 (claimed floor not met)
+```
+
+**둘 다 손실이다.** 이게 요점이다. 이 시스템은 수익을 자랑하는 도구가 아니라
+**주장이 참인지 검증하는** 도구다. 손실 중인 포트폴리오도 "-400bp 이상"이라는
+참인 주장은 증명할 수 있고, "0bp 이상"이라는 거짓 주장은 증명할 수 없다.
+증명자가 무엇을 공개할지(하한 -400bp) 고르고, 검증자는 그 이상은 알 수 없다.
+
+주장값은 실제 합계를 50bp 단위로 내린 값이다. 정확한 값(-356bp)은 witness 로만 존재한다.
+
+## Midnight 기능을 어떻게 썼는가
+
+심사 항목이므로 코드 위치와 함께 적는다. 전부 `contracts/track_record.compact`.
+
+| Midnight 기능 | 어디에 | 왜 |
+|---|---|---|
+| **`witness`** (비공개 입력) | `strategyParams`, `nextTrade`, `provenTrades`, `provenPaths`, `portfolioWeights` | 전략·거래·포지션은 회로 안에서만 존재. 트랜잭션에 실리지 않는다 |
+| **`ledger`** (공개 상태) | `strategyCommitment`, `tradeLog`, `provenPnlFloor`, `provenMaxWeightBps` | 검증자가 볼 수 있는 전부. 해시·루트·"주장"만 |
+| **`persistentCommit(값, 난수)`** | `commitStrategy`, `commitPortfolio` | 개봉 난수가 있어야 커밋을 열 수 있다. 같은 파라미터라도 커밋이 달라 사전 이미지 공격 차단 |
+| **`persistentHash<Trade>`** | `recordTrade`, `proveReturnAtLeast` | 거래를 머클 리프로 만드는 해시. 회로와 TypeScript 가 같은 값을 계산한다 |
+| **`HistoricMerkleTree<10, Bytes<32>>`** | `tradeLog` | 거래를 발생 시점마다 온체인에 누적. 과거 루트도 유효해서 증명 시점의 루트 경합이 없다 |
+| **`merkleTreePathRoot` + `checkRoot`** | `proveReturnAtLeast` | 제출된 8건이 커밋된 로그에 실제로 있는지. 없던 거래 끼워넣기 차단 |
+| **`disclose()`** | 모든 ledger 쓰기 | 컴파일러의 정보 흐름 검사. 명시하지 않으면 witness 가 원장에 닿는 경로가 컴파일 에러 |
+| **`assert`** | 4개 회로 전부 | 거짓 주장은 여기서 멈춰 proofData 가 생성되지 않는다 |
+
+### disclose() 가 잡아낸 것
+
+이 프로젝트에서 컴파일러가 실제로 막은 두 지점:
+
+1. 커밋 해시를 원장에 쓰는 것 — 해시라도 witness 유래 값이므로 `disclose()` 필요
+2. **머클 루트를 `checkRoot` 로 대조하는 것** — "어느 루트에 대해 증명하는가"가
+   드러난다고 잡아냈다. 루트는 어차피 공개 정보라 의도된 공개다
+
+두 번째는 사람이 놓치기 쉬운 채널이다. 프라이버시가 관례가 아니라 타입 검사라는 뜻이다.
+
+### 지갑·노드 없이 증명이 되는 이유
+
+`httpClientProvingProvider` 의 회로 단위 `/check` + `/prove` 엔드포인트를 쓴다.
+트랜잭션 단위 `/prove-tx` 는 지갑 잔액 조정이 필요하지만, 회로 단위 증명은
+`proofData -> proofDataIntoSerializedPreimage -> /prove` 로 끝난다.
+심사위원이 지갑 설정 없이 `npm run live` 만으로 실제 증명을 재현할 수 있다.
+
+## 테스트넷 배포 (진행 중)
+
+```bash
+npm run wallet       # Preview 테스트넷 지갑 생성 (시드는 .gitignore)
+# -> 출력된 주소로 https://midnight-tmnight-preview.nethermind.dev/ 에서 tNIGHT 수령
+npm run deploy       # 배포, deployed-preview.json 에 컨트랙트 주소 기록
+```
+
+배포 스크립트는 프로바이더 6종(private state / indexer / zk config / proof /
+wallet / midnight) 배선까지 검증됐고, 파우셋 입금 후 실행 예정이다.
 
 ## 개발 환경
 
