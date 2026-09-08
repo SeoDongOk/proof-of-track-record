@@ -74,7 +74,7 @@ Exception: potential witness-value disclosure must be declared but is not:
 - [x] **회로 3** 수익률 임계값 증명 `proveReturnAtLeast`
 - [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
 - [x] **로컬 실행 데모** (`npm run demo`) — 적대적 테스트 포함
-- [ ] 증명 서버 연동 (실제 ZK 증명 생성)
+- [x] **실제 ZK 증명 생성** (`npm run live`) — 증명 서버 8.1.0 연동
 - [ ] 테스트넷 배포
 
 ### 데모 결과

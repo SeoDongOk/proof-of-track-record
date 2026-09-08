@@ -5,9 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "compact compile contracts/track_record.compact build/track_record",
-    "demo": "node src/demo.mjs"
+    "proof-server": "docker run -d --name ptr-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v",
+    "demo": "node src/demo.mjs",
+    "live": "node src/live-proof.mjs"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "^0.16.0"
+    "@midnight-ntwrk/compact-runtime": "^0.16.0",
+    "@midnight-ntwrk/midnight-js-contracts": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "^4.1.1",
+    "@midnight-ntwrk/midnight-js-types": "^4.1.1"
   }
 }
