@@ -145,6 +145,10 @@ npm run export       # ~/.paper_trading/state.json -> trades.json (시가평가 
 npm run live:real    # 배치 0, 1 각각 실제 ZK 증명 생성
 ```
 
+> `export` 는 [Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
+> 의 `paper_trading` 패키지와 yfinance 가 `PYTHONPATH` 에 있어야 한다.
+> 그 저장소 없이 재현하려면 `npm run live` (내장 샘플) 를 쓰면 된다 — 같은 회로, 같은 증명 서버.
+
 체리피킹을 막기 위해 티커 **알파벳순**으로 8건씩 잘라 **두 배치 모두** 증명한다.
 
 ```
@@ -217,7 +221,20 @@ export PATH="$HOME/.local/bin:$PATH"
 docker run -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
 ```
 
-## 빌드
+## 재현 확인
+
+심사 절차 그대로 **fresh clone** 에서 검증했다 (2026-09-09).
+
+```
+git clone … && npm install        OK
+npm run build                     6 circuits, 산출물 28개
+npm run demo                      5/5 ✅  (증명 서버 불필요)
+npm run live                      ZK 증명 4508 bytes, 21.8s
+```
+
+선행 조건은 Compact 툴체인 0.31.1 (`compact update 0.31`) 과, `live` 에 한해 Docker 증명 서버뿐이다.
+
+## 빌드 및 실행
 
 ```bash
 compact compile contracts/smoke.compact build/smoke
