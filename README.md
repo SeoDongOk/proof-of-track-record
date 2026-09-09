@@ -1,116 +1,128 @@
 # Proof of Track Record
 
-**트레이딩 성과를, 전략과 포지션을 공개하지 않고 증명한다.**
+English · **[한국어](README.ko.md)**
 
-Midnight Korea Hackathon 2026 출품작.
+**Prove trading performance without revealing your strategy or positions.**
+
+Submission for the Midnight Korea Hackathon 2026.
 
 ---
 
-## 문제
+## The problem
 
-트레이딩 성과 주장은 검증이 불가능하다.
+Claims about trading performance cannot be verified.
 
-- **전략을 공개하면** 알파가 사라진다. 남들이 따라 하면 그걸로 끝이다.
-- **공개하지 않으면** 아무도 믿을 이유가 없다. 스크린샷은 조작할 수 있고,
-  백테스트는 사후에 얼마든지 다시 돌릴 수 있다.
+- **Reveal the strategy** and the alpha dies. Once others copy it, it's over.
+- **Don't reveal it** and nobody has a reason to believe you. Screenshots can be
+  faked, and a backtest can always be re-run until it looks good.
 
-이건 가상의 문제가 아니다. 이 저장소의 저자는 직접 겪었다.
+This is not a hypothetical. The author of this repository ran into it directly.
 
-S&P 500 비지도학습 전략을 백테스트했을 때 **연 23.63%, 샤프 0.95**가 나왔다.
-숫자만 보면 SPY(11.37%)의 2배다. 그런데 파고들었더니,
+Backtesting an unsupervised-learning strategy on the S&P 500 produced
+**23.63% annualized, Sharpe 0.95** — twice SPY's 11.37%. Then came the digging:
 
-| 검증 단계 | 결과 |
+| Verification step | Result |
 |---|---|
-| 표면 성과 | 연 23.63% / 샤프 0.95 |
-| 생존 편향 제거 (Point-in-Time 유니버스) | 연 **14.48%** / 샤프 0.61 |
-| 통계적 유의성 (Newey-West) | 초과수익 **p = 0.566** — 0과 구별 불가 |
-| Deflated Sharpe (데이터 스누핑 보정) | **0.55** |
+| Headline performance | 23.63% / Sharpe 0.95 |
+| Survivorship bias removed (point-in-time universe) | **14.48%** / Sharpe 0.61 |
+| Statistical significance (Newey-West) | excess return **p = 0.566** — indistinguishable from zero |
+| Deflated Sharpe (data-snooping adjusted) | **0.55** |
 
-**알파는 없었다.** 그런데 이 사실을 알아내려면 파이프라인을 통째로 재구현하고
-위키피디아 리비전 97개월치를 긁어 시점별 구성종목을 복원해야 했다.
+**There was no alpha.** But establishing that required rebuilding the entire
+pipeline and scraping 97 months of Wikipedia revisions to reconstruct
+point-in-time index membership.
 
-즉 **읽는 사람이 그 노동을 하지 않는 한, 어떤 성과 주장도 검증할 수 없다.**
+In other words: **unless the reader does that labor themselves, no performance
+claim can be verified.**
 
-## 해법
+## The approach
 
-영지식 증명은 정확히 이 간극을 메운다.
-**양쪽이 사전 지식을 공유하지 않고도 신뢰**하는 것 — 검증자는 전략을 몰라도 되고,
-증명자는 전략을 넘기지 않아도 된다.
+Zero-knowledge proofs close exactly this gap. **Both sides reach trust without
+sharing prior knowledge** — the verifier never learns the strategy, and the
+prover never hands it over.
 
-이 DApp 은 트레이더가 다음을 증명하게 한다.
+This DApp lets a trader prove:
 
-1. **사전 커밋** — 전략 파라미터를 거래 *이전에* 해시로 원장에 남긴다.
-   나중에 파라미터를 바꿔 성과를 꾸미는 것(사후 오버피팅)을 막는다.
-2. **성과의 출처** — 보고한 수익률이 커밋된 거래 로그에서 계산됐음을 증명한다.
-   개별 체결 내역은 공개하지 않는다.
-3. **리스크 준수** — 종목당 비중 상한, 레버리지 한도 같은 제약을 지켰음을
-   포지션을 드러내지 않고 증명한다.
+1. **Prior commitment** — strategy parameters are hashed onto the ledger
+   *before* trading begins, so they cannot be tuned afterwards to flatter the
+   results (post-hoc overfitting).
+2. **Provenance of returns** — the reported return was computed from the
+   committed trade log. Individual fills stay private.
+3. **Risk compliance** — per-position caps and leverage limits were respected,
+   without disclosing the positions.
 
-## 왜 이걸 쓰나 — 기존 방법과의 차이
+## Why use this — versus what exists today
 
-성과를 증명하는 방법은 이미 있다. 전부 **믿을 만한 제3자에게 전부 보여주는 것**이다.
+Ways to prove performance already exist. All of them amount to
+**showing everything to a trusted third party.**
 
-| 오늘의 방법 | 어떻게 동작하나 | 무엇을 포기하나 |
+| Today's approach | How it works | What you give up |
 |---|---|---|
-| eToro·바이비트 카피트레이딩 | 플랫폼이 계좌를 위탁 보관 | 그 플랫폼에서만 거래 가능. 플랫폼이 전부 봄. 배지가 밖에서는 무의미 |
-| 프랍펌 (FTMO 등) | 회사 계좌를 빌려줌 | 내 계좌의 기록은 증명 불가 |
-| 펀드 감사·행정사 | 감사인이 전 거래를 열람 | 비용·수개월 지연·전면 공개 |
-| 스크린샷 / 거래내역 PDF | 없음 | 위조 가능 |
+| eToro / Bybit copy trading | The platform custodies your account | Locked to that platform. It sees everything. The badge is meaningless elsewhere |
+| Prop firms (FTMO etc.) | They lend you *their* account | Your own account's record stays unprovable |
+| Fund auditors / administrators | The auditor reads every trade | Cost, months of delay, full disclosure |
+| Screenshots / brokerage PDFs | Nothing | Forgeable |
 
-**공통점: 검증받으려면 전략을 넘겨야 하고, 검증 결과는 그 플랫폼 밖으로 못 나간다.**
+**The common thread: to be verified you must hand over the strategy, and the
+verification doesn't travel outside that platform.**
 
-### 이 프로젝트가 다른 점
+### What is different here
 
-증명이 **이동 가능(portable)** 하고, 검증자가 아무것도 볼 필요가 없다.
-바이낸스에서 거래한 기록을 트위터 청중에게, 계좌를 공개하지 않고 증명할 수 있다.
+The proof is **portable**, and the verifier needs to see nothing. You can prove
+a record earned on Binance to an audience on Twitter without opening the account.
 
-### 해시만 체인에 올리면 안 되나?
+### Why not just put hashes on a chain?
 
-타임스탬프는 되지만 그걸로 끝이다. "수익률 15% 이상"을 증명하려면
-결국 거래를 전부 공개해서 검증자가 직접 계산하게 해야 한다.
+You get a timestamp, and that's where it ends. To prove "return ≥ 15%" you would
+still have to publish every trade so the verifier can compute it themselves.
 
-영지식이 필요한 이유가 여기다. **입력을 공개하지 않고 입력에서 유도된 주장을 증명**하는 것.
-공개 원장(타임스탬프·불변성)과 ZK(비공개) 둘 다 있어야 성립하며, Midnight 이 그 조합이다.
+That is precisely why zero-knowledge is needed: **proving a claim derived from
+inputs without disclosing the inputs.** It takes both a public ledger
+(timestamps, immutability) and ZK (non-disclosure) — Midnight is that combination.
 
-### 브로커 서명 없이도 오늘 쓸 수 있는 것
+### What you get today, without broker signatures
 
-이 시스템은 아직 "NAV 가 진짜다"를 증명하지 못한다([신뢰 모델](#신뢰-모델--이-시스템이-막는-것과-못-막는-것)).
-그래도 **오늘 당장, 아무도 신뢰하지 않고** 얻는 게 하나 있다.
+This system cannot yet prove that the NAV itself is real
+(see [Trust model](#trust-model--what-this-stops-and-what-it-does-not)).
+Even so, there is one thing it delivers **today, trusting no one**:
 
-> **역사를 고쳐 쓸 수 없다.**
+> **History cannot be rewritten.**
 
-전략 해시와 NAV 를 결과가 나오기 **전에** 온체인에 못 박으면:
+Pin the strategy hash and the NAV on-chain *before* the outcome is known, and:
 
-- 전략 10개를 돌려놓고 이긴 것만 보여줄 수 없다 (전략 단위 생존 편향)
-- 중간에 파라미터를 바꿔놓고 "원래 이랬다"고 할 수 없다
-- 나중에 거래를 끼워넣거나 뺄 수 없다
+- You cannot run ten strategies and show only the winner (strategy-level survivorship)
+- You cannot change parameters midway and claim they were always that way
+- You cannot insert or drop trades after the fact
 
-이 프로젝트가 여기서 출발했다. 위 [문제](#문제)에 적은 그 백테스트다 —
-연 23.63% 가 생존 편향을 제거하니 14.48% 가 됐고, 초과수익 p 값은 0.566 이었다.
+This project started from exactly that failure. It is the same backtest described
+in [The problem](#the-problem) — 23.63% became 14.48% once survivorship bias was
+removed, and the excess return carried p = 0.566.
 
-문제는 그 과정이 **아무 흔적도 남기지 않는다**는 것이다. 백테스트는 마음에 들
-때까지 다시 돌릴 수 있고, 최종 결과만 보는 사람은 그 사실을 알 방법이 없다.
-사전 커밋은 그걸 불가능하게 만든다. 커밋한 뒤에 나온 숫자만 주장할 수 있다.
+The dangerous part is that the process **leaves no trace**. A backtest can be
+re-run until it pleases, and someone looking only at the final number has no way
+to know. Prior commitment makes that impossible: you can only claim numbers that
+came *after* the commitment.
 
-즉 주장의 성격이 다르다.
+The nature of the claim changes:
 
-| | 주장 |
+| | The claim |
 |---|---|
-| 스크린샷 | "제가 이만큼 벌었습니다" (검증 불가) |
-| 이 시스템 (브로커 서명 없이) | "이 숫자는 결과를 알기 전에 커밋됐고 이후 수정되지 않았습니다" |
-| 이 시스템 (브로커 서명 포함) | "이 숫자는 거래소가 서명한 잔고에서 나왔습니다" |
+| Screenshot | "I made this much" (unverifiable) |
+| This system (no broker signature) | "These numbers were committed before the outcome was known, and were not revised" |
+| This system (with broker signature) | "These numbers came from a balance signed by the exchange" |
 
-두 번째만으로도 데이터 스누핑은 막힌다. 세 번째는 다음 단계다.
+The second alone is enough to stop data snooping. The third is the next step.
 
-### 누가 안 쓰나
+### Who would not use this
 
-증명을 요구하는 쪽이 없으면 의미가 없다. 스크린샷으로 충분한 관계에서는
-이 시스템이 할 일이 없다. **돈을 맡기는 쪽이 검증을 요구할 때** 값이 생긴다.
+If nobody demands proof, none of this matters. Where a screenshot suffices, this
+system has no job. **The value appears when the side putting up the money asks
+to verify.**
 
-## 핵심 아이디어 — 프라이버시는 관례가 아니라 타입 검사다
+## The core idea — privacy as a type check, not a convention
 
-Compact 의 정보 흐름 타입 시스템이 이 프로젝트의 뼈대다.
-비공개 값이 공개 원장에 닿으면 **컴파일이 거부된다.**
+Compact's information-flow type system is the backbone of this project.
+When a private value reaches the public ledger, **compilation is refused.**
 
 ```
 Exception: potential witness-value disclosure must be declared but is not:
@@ -118,346 +130,366 @@ Exception: potential witness-value disclosure must be declared but is not:
   nature of the disclosure: ledger operation might disclose the witness value
 ```
 
-공개하려면 `disclose()` 로 의도를 명시해야 한다. 즉 "실수로 새는 것"이
-아니라 "공개하기로 한 것"만 공개된다. 프라이버시가 관례가 아니라 **타입 검사**다.
+To publish it you must state the intent with `disclose()`. So what becomes
+public is what you *decided* to publish, never what leaked by accident.
+Privacy is enforced by the **type checker**, not by convention.
 
-- **witness** — 거래 로그, 전략 파라미터, 포지션 (비공개)
-- **ledger** — 전략 커밋 해시, 검증된 성과 지표 (공개)
-- **circuit** — 비공개 입력으로 공개 주장을 검증하는 ZK 회로
+- **witness** — trade log, strategy parameters, positions (private)
+- **ledger** — strategy commitment hash, verified performance claims (public)
+- **circuit** — the ZK circuit that validates a public claim against private inputs
 
-## 상태
+## Status
 
-**4개 회로 전부 동작 검증 완료.** 참인 주장은 통과하고 거짓 주장·위조는 거부된다.
+**All circuits verified end to end.** True claims pass; false claims and forgeries
+are rejected.
 
-- [x] Compact 툴체인 (네트워크와 맞춘 **0.31.1**, language_version 0.23, runtime 0.16.0)
-- [x] **회로 1** 전략 사전 커밋 `commitStrategy` / `revealMatchesCommitment`
-- [x] **회로 2** 거래 머클 커밋 `recordTrade`
-- [x] **회로 3** 수익률 임계값 증명 `proveReturnAtLeast`
-- [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
-- [x] **회로 5** NAV 델타 증명 `openNavPeriod` / `closeNavPeriod` / `proveNavReturnAtLeast`
-- [x] **로컬 실행 데모** (`npm run demo`) — 적대적 테스트 포함
-- [x] **실제 ZK 증명 생성** (`npm run live`) — 증명 서버 8.1.0 연동
-- [x] **실제 포트폴리오 데이터로 증명** (`npm run export && npm run live:real`)
-- [x] **온체인 배포** — 로컬 devnet, 블록 319 (`npm run deploy`)
+- [x] Compact toolchain (**0.31.1**, matched to the live network; language_version 0.23, runtime 0.16.0)
+- [x] **Circuit 1** strategy pre-commitment — `commitStrategy` / `revealMatchesCommitment`
+- [x] **Circuit 2** trade Merkle commitment — `recordTrade`
+- [x] **Circuit 3** return threshold proof — `proveReturnAtLeast`
+- [x] **Circuit 4** risk limit proof — `commitPortfolio` / `proveMaxWeight`
+- [x] **Circuit 5** NAV delta proof — `openNavPeriod` / `closeNavPeriod` / `proveNavReturnAtLeast`
+- [x] **Local demo** (`npm run demo`) — includes adversarial tests
+- [x] **Real ZK proof generation** (`npm run live`) — against proof server 8.1.0
+- [x] **Proofs over real portfolio data** (`npm run export && npm run live:real`)
+- [x] **On-chain deployment** — local devnet (`npm run deploy`)
 
-### 데모 결과
+### Demo output
 
 ```
-── 3) 수익률 임계값 증명 ──────────────────────────
-   머클 경로 확보: 8 / 8
-   실제 손익 합계: +590bp (인코딩 800590)
-   ✅ 참인 주장 (≥ +500bp) 통과   원장 기록: 800500 (8건 근거)
-   ✅ 거짓 주장 (≥ +900bp) 거부: failed assert: claimed floor not met
-   ✅ 위조 거래 거부: failed assert: merkle path does not match the trade
+-- 3) Return threshold proof ----------------------
+   Merkle paths resolved: 8 / 8
+   Actual P&L sum: +590bp (encoded 800590)
+   PASS  true claim (>= +500bp)   ledger records: 800500 (backed by 8 trades)
+   PASS  false claim (>= +900bp) rejected: failed assert: claimed floor not met
+   PASS  forged trade rejected: failed assert: merkle path does not match the trade
 
-── 4) 리스크 한도 증명 ────────────────────────────
-   ✅ "종목당 ≤ 10%" 증명 통과   원장 기록: 1000 bp
-   ✅ 거짓 한도 (≤ 7%) 거부: failed assert: position exceeds the risk limit
+-- 4) Risk limit proof ----------------------------
+   PASS  "<= 10% per position" proved   ledger records: 1000 bp
+   PASS  false limit (<= 7%) rejected: failed assert: position exceeds the risk limit
 
-── 최종 공개 원장 ─────────────────────────────────
-   증명된 손익하한: 800500  (실제값 800590 은 비공개)
-   증명된 비중상한: 1000 bp (실제 비중은 비공개)
+-- Final public ledger ----------------------------
+   Proven P&L floor:   800500  (actual 800590 stays private)
+   Proven weight cap:  1000 bp (actual weights stay private)
 ```
 
-원장에 남는 것은 **"손익 합계가 +500bp 이상"** 이라는 사실뿐이다.
-실제값 +590bp 도, 8건의 개별 손익도 공개되지 않는다.
+What lands on the ledger is only the fact that **the P&L sum is at least +500bp**.
+Neither the actual +590bp nor the eight individual results are disclosed.
 
-적대적 테스트 3종을 모두 통과한다.
+Three adversarial tests all pass:
 
-| 시도 | 결과 |
+| Attempt | Result |
 |---|---|
-| 실제보다 높은 수익률 주장 | `claimed floor not met` 으로 거부 |
-| 로그에 없는 거래를 끼워넣어 수익률 부풀리기 | `merkle path does not match the trade` 로 거부 |
-| 실제보다 낮은 리스크 한도 주장 | `position exceeds the risk limit` 으로 거부 |
+| Claim a higher return than reality | rejected — `claimed floor not met` |
+| Inflate returns by inserting a trade absent from the log | rejected — `merkle path does not match the trade` |
+| Claim a tighter risk limit than reality | rejected — `position exceeds the risk limit` |
 
-### 회로 규모
+### Circuit size
 
-| 회로 | 증명키 | 검증키 |
+| Circuit | Prover key | Verifier key |
 |---|---|---|
-| `proveReturnAtLeast` (머클 경로 8건 검증) | 9.5 MB | 2.1 KB |
-| 나머지 5개 | 2.7 MB | 2.1 KB |
+| `proveReturnAtLeast` (verifies 8 Merkle paths) | 9.5 MB | 2.1 KB |
+| The other circuits | 2.7 MB | 2.1 KB |
 
-증명은 무겁고 검증은 가볍다. 검증자는 2.1KB 짜리 키만 있으면
-트레이더의 주장을 확인할 수 있고, 거래 내역은 볼 수 없다.
+Proving is heavy; verification is light. A verifier needs only a 2.1 KB key to
+check the trader's claim — and still cannot see the trades.
 
-### 설계
+### Design
 
-| | 공개 (ledger) | 비공개 (witness) |
+| | Public (ledger) | Private (witness) |
 |---|---|---|
-| 전략 | 커밋 해시 | 파라미터 원문, 개봉 난수 |
-| 거래 | 머클 루트, 건수 | 체결 시각, 손익, salt |
-| 성과 | "손익 합계 ≥ X" 주장 | 실제 합계, 개별 손익 |
-| 리스크 | "종목당 ≤ Y%" 주장 | 종목별 실제 비중 |
+| Strategy | commitment hash | parameters, opening randomness |
+| Trades | Merkle root, count | timestamps, P&L, salts |
+| Performance | claim "P&L sum ≥ X" | actual sum, individual results |
+| Risk | claim "≤ Y% per position" | actual per-position weights |
 
-거래는 **발생할 때마다** 머클 트리에 커밋되므로, 나중에 손실 거래를
-빼고 성과를 계산하는 것이 불가능하다. 증명 회로는 각 거래에 대해
-두 가지를 강제한다.
+Trades are committed to the Merkle tree **as they happen**, so performance cannot
+later be computed with the losers removed. For each trade the proving circuit
+enforces two things:
 
-1. 제출된 머클 경로의 잎이 그 거래의 해시와 같다 — 거래 바꿔치기 차단
-2. 그 경로의 루트를 원장이 알고 있다 — 없던 거래 끼워넣기 차단
+1. The leaf of the submitted Merkle path equals that trade's hash — blocks trade substitution
+2. The ledger recognises that path's root — blocks inserting trades that never existed
 
-## 신뢰 모델 — 이 시스템이 막는 것과 못 막는 것
+## Trust model — what this stops and what it does not
 
-ZK 는 "계산이 정직했다"를 증명하지 **"입력이 전부다"를 증명하지 않는다.**
-회로 3(거래 로그 합계)에는 그래서 구멍이 있다. 로그에 무엇을 넣을지 고르는
-주체가 트레이더 본인이므로, **손실 거래를 애초에 커밋하지 않으면**
-남은 것만으로 참인 주장을 만들 수 있다.
+ZK proves that **the computation was honest**; it does not prove that
+**the inputs were complete.** Circuit 3 (trade-log sum) has a hole because of
+that: the trader chooses what goes into the log, so **simply never committing the
+losing trades** leaves a set from which true-but-misleading claims can be made.
 
-회로 5(NAV 델타)가 이 구멍을 막는다. 기간 시작·종료의 **계좌 순자산**을
-커밋하면 거래를 빼도 잔고는 그대로다.
+Circuit 5 (NAV delta) closes that hole. Commit the **account net asset value** at
+the start and end of a period and removing trades changes nothing — the balance
+is the balance.
 
 ```
-실제 거래: 5승 3패, 합계 -400bp    NAV 100,000,000 -> 96,000,000
+Actual trades: 5 wins, 3 losses, sum -400bp   NAV 100,000,000 -> 96,000,000
 
-[1] 이긴 5건만 골라낸 주장 (+950bp)  -> 거부: claimed return not met
-[2] 실제 성과 주장 (>= -400bp)       -> 통과, 원장 기록 9600
-[3] 1bp 만 부풀려도 (>= -399bp)      -> 거부: claimed return not met
-[4] 시작 NAV 를 사후에 절반으로       -> 거부: open nav does not match its commitment
+[1] claim from the 5 winners only (+950bp)  -> rejected: claimed return not met
+[2] claim the real result (>= -400bp)       -> accepted, ledger records 9600
+[3] inflate by a single bp (>= -399bp)      -> rejected: claimed return not met
+[4] halve the opening NAV after the fact    -> rejected: open nav does not match its commitment
 ```
 
-`npm run nav` 로 재현. `npm run nav:proof` 는 실제 ZK 증명을 만든다
-(4508 bytes, 7.9s — 머클 경로가 없어 회로 3보다 가볍다).
+Reproduce with `npm run nav`. `npm run nav:proof` generates a real ZK proof
+(4508 bytes, 7.9s — lighter than circuit 3 since there are no Merkle paths).
 
-### 그래도 남는 신뢰 가정
+### The assumption that remains
 
-| 막는다 | 못 막는다 |
+| Stopped | Not stopped |
 |---|---|
-| 커밋한 값에 대해 거짓말하기 | NAV 자체를 처음부터 조작하기 |
-| 손실 거래를 빼고 계산하기 | |
-| 사후에 시작 잔고 낮추기 | |
-| 전략을 사후에 바꾸기 | |
+| Lying about a committed value | Fabricating the NAV in the first place |
+| Computing returns with losses omitted | |
+| Lowering the opening balance after the fact | |
+| Changing the strategy after the fact | |
 
-NAV 를 통째로 지어내는 것까지 막으려면 **브로커 서명**이 필요하다.
-체결·잔고를 거래소가 서명하고 회로가 그 서명을 검증하면 자기증명이 아니게 된다.
+To stop a wholly invented NAV you need a **broker signature**: the exchange signs
+fills and balances, the circuit verifies that signature, and the claim stops being
+self-attested.
 
-### 시도했고, 왜 미뤘는지
+### What was attempted, and why it was deferred
 
-0.31.1 에는 서명 검증이 패키지로 없어 Jubjub 연산으로 Schnorr 을 직접 조립해 봤다.
-회로 자체는 컴파일까지 됐지만(`s·G == R + e·P`), **챌린지를 스칼라로 줄이는 지점**에서
-막혔다.
+Toolchain 0.31.1 ships no packaged signature verification, so Schnorr was
+assembled by hand from the Jubjub primitives. The circuit compiled and the
+verification equation held (`s·G == R + e·P`), but it broke down at
+**reducing the challenge into the scalar field.**
 
-| 확인한 사실 | |
+| Measured | |
 |---|---|
-| `ecMul`/`ecMulGenerator` 스칼라 상한 | `6554484396890773809930967563523245729705921265872317281365359162392183254198` (Jubjub 스칼라체 r−1) |
-| `transientHash` 출력 | 기저체 원소 (~2^255). **스칼라체를 넘는다** |
-| `as Uint<248>` | 잘라내기가 아니라 **범위 검사**. 해시 출력에 쓰면 실패 |
-| Compact `Uint` 최대 폭 | 248비트 |
-| `Bytes<32>` → `Uint` 변환 | 회로 안에 없음 (`convertBytesToField` 는 런타임 전용) |
-| 사용 가능한 EC | `ecAdd` `ecMul` `ecMulGenerator` `hashToCurve`, 점 비교는 `==` |
+| `ecMul` / `ecMulGenerator` scalar bound | `6554484396890773809930967563523245729705921265872317281365359162392183254198` (Jubjub scalar field r−1) |
+| `transientHash` output | base-field element (~2^255). **Exceeds the scalar field** |
+| `as Uint<248>` | a range check, not truncation — fails on hash output |
+| Compact `Uint` maximum width | 248 bits |
+| `Bytes<32>` → `Uint` in-circuit | not available (`convertBytesToField` is runtime-only) |
+| Usable EC ops | `ecAdd` `ecMul` `ecMulGenerator` `hashToCurve`; points compare with `==` |
 
-남은 길은 해시를 비트 분해해 하위 248비트를 witness 로 받고 그 분해가
-맞는지 회로에서 검증하는 가젯인데, Field 랩어라운드 때문에 분해의 유일성을
-따로 보장해야 한다. **검토받지 않은 손수 만든 서명 검증을 제출물에 넣는 것은
-없는 것보다 나쁘다고 판단해 되돌렸다.**
+The remaining route is a bit-decomposition gadget: take the low 248 bits as a
+witness and verify the decomposition in-circuit — but Field wraparound means the
+uniqueness of that decomposition has to be argued separately.
+**Shipping unreviewed hand-rolled signature verification is worse than shipping
+none, so it was reverted.**
 
-정공법은 Compact 0.34 의 `secp256k1EcdsaVerify` 다. 다만 0.34 는 ledger 9 대상이고
-현재 네트워크는 ledger 8 이라, 네트워크가 올라오면 그때 교체하는 것이 맞다.
+The proper answer is `secp256k1EcdsaVerify` in Compact 0.34. That release targets
+ledger 9 while the current network runs ledger 8, so the right time to switch is
+when the network moves.
 
-## 실제 포트폴리오로 증명하기
+## Proving over a real portfolio
 
-위 데모는 샘플 8건이다. 실제 데이터로도 돌아간다.
-[Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL) 의
-페이퍼 트레이딩 계좌(S&P 500 16종목, 2026-09-08 진입)를 그대로 물렸다.
+The demo above uses eight sample trades. It also runs on real data: the paper
+trading account from
+[Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
+(16 S&P 500 positions, entered 2026-09-08) is wired in directly.
 
 ```bash
-npm run export       # ~/.paper_trading/state.json -> trades.json (시가평가 손익, bps)
-npm run live:real    # 배치 0, 1 각각 실제 ZK 증명 생성
+npm run export       # ~/.paper_trading/state.json -> trades.json (mark-to-market P&L in bps)
+npm run live:real    # real ZK proof for batch 0 and batch 1
 ```
 
-> `export` 는 [Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
-> 의 `paper_trading` 패키지와 yfinance 가 `PYTHONPATH` 에 있어야 한다.
-> 그 저장소 없이 재현하려면 `npm run live` (내장 샘플) 를 쓰면 된다 — 같은 회로, 같은 증명 서버.
+> `export` needs the `paper_trading` package and yfinance on `PYTHONPATH`.
+> Without that repository, use `npm run live` (bundled sample) — same circuits,
+> same proof server.
 
-체리피킹을 막기 위해 티커 **알파벳순**으로 8건씩 잘라 **두 배치 모두** 증명한다.
+To rule out cherry-picking, positions are sorted **alphabetically by ticker**,
+cut into batches of eight, and **both batches are proved**.
 
 ```
-배치0 [COP,CRM,CVX,DE,FCX,GILD,JNJ,MRK]    실제 -356bp -> 주장 "≥ -400bp"  ✅ 4508B / 32.9s
-배치1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  실제 -285bp -> 주장 "≥ -300bp"  ✅ 4508B / 31.9s
+batch 0 [COP,CRM,CVX,DE,FCX,GILD,JNJ,MRK]     actual -356bp -> claim ">= -400bp"  4508B / 32.9s
+batch 1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  actual -285bp -> claim ">= -300bp"  4508B / 31.9s
 
-거짓 주장 "≥ 0bp"  -> 회로 거부 (claimed floor not met)
+false claim ">= 0bp" -> circuit rejects (claimed floor not met)
 ```
 
-**둘 다 손실이다.** 이게 요점이다. 이 시스템은 수익을 자랑하는 도구가 아니라
-**주장이 참인지 검증하는** 도구다. 손실 중인 포트폴리오도 "-400bp 이상"이라는
-참인 주장은 증명할 수 있고, "0bp 이상"이라는 거짓 주장은 증명할 수 없다.
-증명자가 무엇을 공개할지(하한 -400bp) 고르고, 검증자는 그 이상은 알 수 없다.
+**Both batches are losses.** That is the point. This is not a tool for showing off
+profits — it is a tool for **checking whether a claim is true**. A losing portfolio
+can still prove the true statement "at least -400bp", and cannot prove the false
+statement "at least 0bp". The prover chooses what to disclose (a floor of -400bp);
+the verifier learns nothing beyond it.
 
-주장값은 실제 합계를 50bp 단위로 내린 값이다. 정확한 값(-356bp)은 witness 로만 존재한다.
+The claimed figure is the actual sum rounded down to 50bp. The exact value
+(-356bp) exists only as a witness.
 
-## Midnight 기능을 어떻게 썼는가
+## How Midnight features are used
 
-심사 항목이므로 코드 위치와 함께 적는다. 전부 `contracts/track_record.compact`.
+Listed with code locations, since this is a judging criterion.
+Everything below lives in `contracts/track_record.compact`.
 
-| Midnight 기능 | 어디에 | 왜 |
+| Midnight feature | Where | Why |
 |---|---|---|
-| **`witness`** (비공개 입력) | `strategyParams`, `nextTrade`, `provenTrades`, `provenPaths`, `portfolioWeights` | 전략·거래·포지션은 회로 안에서만 존재. 트랜잭션에 실리지 않는다 |
-| **`ledger`** (공개 상태) | `strategyCommitment`, `tradeLog`, `provenPnlFloor`, `provenMaxWeightBps` | 검증자가 볼 수 있는 전부. 해시·루트·"주장"만 |
-| **`persistentCommit(값, 난수)`** | `commitStrategy`, `commitPortfolio` | 개봉 난수가 있어야 커밋을 열 수 있다. 같은 파라미터라도 커밋이 달라 사전 이미지 공격 차단 |
-| **`persistentHash<Trade>`** | `recordTrade`, `proveReturnAtLeast` | 거래를 머클 리프로 만드는 해시. 회로와 TypeScript 가 같은 값을 계산한다 |
-| **`HistoricMerkleTree<10, Bytes<32>>`** | `tradeLog` | 거래를 발생 시점마다 온체인에 누적. 과거 루트도 유효해서 증명 시점의 루트 경합이 없다 |
-| **`merkleTreePathRoot` + `checkRoot`** | `proveReturnAtLeast` | 제출된 8건이 커밋된 로그에 실제로 있는지. 없던 거래 끼워넣기 차단 |
-| **`disclose()`** | 모든 ledger 쓰기 | 컴파일러의 정보 흐름 검사. 명시하지 않으면 witness 가 원장에 닿는 경로가 컴파일 에러 |
-| **`assert`** | 4개 회로 전부 | 거짓 주장은 여기서 멈춰 proofData 가 생성되지 않는다 |
+| **`witness`** (private input) | `strategyParams`, `nextTrade`, `provenTrades`, `provenPaths`, `portfolioWeights` | Strategy, trades and positions exist only inside the circuit; they never enter a transaction |
+| **`ledger`** (public state) | `strategyCommitment`, `tradeLog`, `provenPnlFloor`, `provenMaxWeightBps` | Everything a verifier can see — hashes, roots and claims only |
+| **`persistentCommit(value, rand)`** | `commitStrategy`, `commitPortfolio` | Opening randomness is required to open a commitment, so identical parameters still produce different commitments — blocks preimage attacks |
+| **`persistentHash<Trade>`** | `recordTrade`, `proveReturnAtLeast` | Hashes a trade into a Merkle leaf; circuit and TypeScript compute the same value |
+| **`HistoricMerkleTree<10, Bytes<32>>`** | `tradeLog` | Accumulates trades on-chain as they occur; past roots stay valid, so there is no race on which root a proof targets |
+| **`merkleTreePathRoot` + `checkRoot`** | `proveReturnAtLeast` | Confirms the eight submitted trades really are in the committed log — blocks inserting trades |
+| **`disclose()`** | every ledger write | The compiler's information-flow check; without it, any path from a witness to the ledger is a compile error |
+| **`assert`** | all circuits | A false claim halts here, so no proof data is ever produced |
 
-### disclose() 가 잡아낸 것
+### What `disclose()` actually caught
 
-이 프로젝트에서 컴파일러가 실제로 막은 두 지점:
+Two places where the compiler stopped this project:
 
-1. 커밋 해시를 원장에 쓰는 것 — 해시라도 witness 유래 값이므로 `disclose()` 필요
-2. **머클 루트를 `checkRoot` 로 대조하는 것** — "어느 루트에 대해 증명하는가"가
-   드러난다고 잡아냈다. 루트는 어차피 공개 정보라 의도된 공개다
+1. Writing the commitment hash to the ledger — even a hash is witness-derived, so
+   `disclose()` is required.
+2. **Checking a Merkle root with `checkRoot`** — the compiler flagged that this
+   reveals *which root* the proof targets. Roots are public anyway, so this is an
+   intentional disclosure.
 
-두 번째는 사람이 놓치기 쉬운 채널이다. 프라이버시가 관례가 아니라 타입 검사라는 뜻이다.
+The second is a channel a human reviewer would likely miss. That is what it means
+for privacy to be a type check rather than a convention.
 
-### 지갑·노드 없이 증명이 되는 이유
+### Why proving works without a wallet or a node
 
-`httpClientProvingProvider` 의 회로 단위 `/check` + `/prove` 엔드포인트를 쓴다.
-트랜잭션 단위 `/prove-tx` 는 지갑 잔액 조정이 필요하지만, 회로 단위 증명은
-`proofData -> proofDataIntoSerializedPreimage -> /prove` 로 끝난다.
-심사위원이 지갑 설정 없이 `npm run live` 만으로 실제 증명을 재현할 수 있다.
+This uses the circuit-level `/check` and `/prove` endpoints of
+`httpClientProvingProvider`. Transaction-level `/prove-tx` requires wallet
+balancing, but circuit-level proving is just
+`proofData -> proofDataIntoSerializedPreimage -> /prove`.
+A reviewer can reproduce real proofs with `npm run live` and no wallet setup.
 
-## 온체인 배포 ✅
+## On-chain deployment
 
-로컬 devnet 에 실제로 배포된다.
+The contract deploys to a local devnet.
 
 ```
-컨트랙트 주소: 7a3eff6c1c374d715a839c4ec01848f6b465c009218a4b3b4aa6005aece088b9
-트랜잭션     : 00cc52e62b94f916749a5fa19edc92b387ac3381cf54eb4ebb292354e3e948d23a
-블록         : 319          배포 소요: 23초
+contract address: 7a3eff6c1c374d715a839c4ec01848f6b465c009218a4b3b4aa6005aece088b9
+transaction     : 00cc52e62b94f916749a5fa19edc92b387ac3381cf54eb4ebb292354e3e948d23a
+block           : 319          deployment took 23s
 ```
 
-인덱서에서 `ContractDeploy` 로 확인된다.
+Confirmed through the indexer as a `ContractDeploy`:
 
 ```bash
 curl -s -X POST http://127.0.0.1:8088/api/v4/graphql -H 'Content-Type: application/json' \
-  -d '{"query":"{ contractAction(address:\"<주소>\"){ __typename address state } }"}'
+  -d '{"query":"{ contractAction(address:\"<address>\"){ __typename address state } }"}'
 # -> {"__typename":"ContractDeploy", "state":"6d69646e696768743a636f6e74726163742d7374617465..."}
 ```
 
-### 재현 방법
+### Reproducing it
 
 ```bash
-# 1) 로컬 devnet (Node >= 22 필요)
+# 1) Local devnet (requires Node >= 22)
 git clone https://github.com/midnightntwrk/midnight-local-dev.git
 cd midnight-local-dev && npm install
 docker compose -f standalone.yml up -d      # node:9944 indexer:8088 proof:6300
 
-# 2) 배포 계정에 NIGHT + DUST 지급
-#    genesis 시드 0000..0001 이 이미 펀딩돼 있어 파우셋이 필요 없다.
-#    npm start -- --fund-config accounts.json  (니모닉 기반) 또는 동봉 스크립트
+# 2) Fund the deploying account with NIGHT + DUST
+#    The genesis seed 0000..0001 is already funded, so no faucet is needed.
 
-# 3) 배포
+# 3) Deploy
 cd ../proof-of-track-record
 nvm use 22 && npm run deploy
 ```
 
-### 지갑 SDK 세대 차이
+### The wallet SDK generation gap
 
-배포가 한동안 막혀 있었다. 원인은 코드가 아니라 **지갑 SDK 세대 차이**였다.
+Deployment was blocked for a while. The cause was not the code but a
+**generation gap between wallet SDKs.**
 
 | | `@midnight-ntwrk/wallet` 5.0.0 | `testkit-js` `MidnightWalletProvider` |
 |---|---|---|
-| 키 모델 | Zswap(shielded) 단독 | shielded + unshielded + **dust** |
-| DUST 잔액 | `state()` 에 필드 없음 | 인식·사용 가능 |
-| 같은 시드의 주소 | 서로 **다르게** 파생된다 | |
+| Key model | Zswap (shielded) only | shielded + unshielded + **dust** |
+| DUST balance | no such field in `state()` | recognised and spendable |
+| Address from the same seed | derives **differently** | |
 
-현재 Midnight 은 수수료를 DUST 로 낸다. NIGHT(unshielded)를 등록해야 DUST 가
-생기는 모델인데 wallet 5.0.0 에는 그 개념이 없어, 펀딩된 주소와 배포 지갑
-주소가 어긋나 배포가 불가능했다. `testkit-js` 의 `MidnightWalletProvider` 는
-`WalletProvider` 와 `MidnightProvider` 를 동시에 구현하므로 그대로 끼우면 된다.
+Midnight now pays fees in DUST, which is generated by registering NIGHT
+(unshielded). Wallet 5.0.0 has no concept of either, so the funded address and
+the deploying wallet's address never matched. `testkit-js`'s
+`MidnightWalletProvider` implements both `WalletProvider` and `MidnightProvider`,
+so it drops straight in.
 
-그래서 `deploy.mjs` 하나로 로컬 devnet / Preview / Preprod 를 모두 다룬다.
-지갑 계층이 셋 다 동일하고, 환경 설정만 `MN_NETWORK` 로 갈린다.
-wallet 5.0.0 기반 스크립트는 전부 제거했다 — 파우셋을 받아도 DUST 수수료를
-낼 수 없어 애초에 동작할 수 없는 코드였다.
+`deploy.mjs` therefore covers local devnet, Preview and Preprod in one script —
+the wallet layer is identical and only the environment differs, selected with
+`MN_NETWORK`. All wallet-5.0.0-based scripts were removed: even with faucet funds
+they could never have paid a DUST fee.
 
-로그로 확인된 지갑 상태:
+Observed wallet state:
+
 ```
 Shielded: {..."250000000000000"...}  Unshielded: "250050000000000"
 Dust: "1250000667146900000000000"
 ```
 
-`testkit-js` 는 Node >= 22 를 요구한다. 회로 컴파일과 증명 생성은
-Node 20 에서도 동작하므로, 배포 스크립트만 Node 22 로 돌리면 된다.
+`testkit-js` requires Node >= 22. Circuit compilation and proof generation work
+on Node 20, so only the deployment script needs the newer runtime.
 
-## 개발 환경
+## Development environment
 
 ```bash
-# Compact 툴체인
+# Compact toolchain
 curl --proto '=https' --tlsv1.2 -LsSf \
   https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
-compact update
+compact update 0.31
 export PATH="$HOME/.local/bin:$PATH"
 
-# 증명 서버 (Docker 필요)
-docker run -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v
+# Proof server (requires Docker)
+npm run proof-server
 ```
 
-## 재현 확인
+## Reproduction check
 
-심사 절차 그대로 **fresh clone** 에서 검증했다 (2026-09-09).
+Verified from a **fresh clone**, following the reviewer's path (2026-09-09).
 
 ```
-git clone … && npm install     OK
-npm run build                  9 circuits
-npm run demo                   5/5 ✅   (증명 서버 불필요)
-npm run nav                    체리피킹 거부 포함 5건 판정 ✅
-npm run live                   ZK 증명 4508 bytes ✅
-npm run deploy           온체인 배포, 블록 580 ✅ (Node 22)
+git clone ... && npm install     OK
+npm run build                    9 circuits
+npm run demo                     5/5 PASS   (no proof server needed)
+npm run nav                      5 verdicts including cherry-pick rejection
+npm run live                     ZK proof, 4508 bytes
+npm run deploy                   on-chain deployment (Node 22)
 ```
 
-선행 조건은 Compact 툴체인 0.31.1 (`compact update 0.31`), `live` 에 한해
-Docker 증명 서버, `deploy:local` 에 한해 로컬 devnet + Node 22 뿐이다.
+The only prerequisites are Compact toolchain 0.31.1 (`compact update 0.31`),
+a Docker proof server for `live`, and a local devnet plus Node 22 for `deploy`.
 
-## 빌드 및 실행
+## Build and run
 
 ```bash
 npm install
-npm run build          # 회로 컴파일 (Compact 툴체인 0.31.1 필요)
+npm run build          # compile circuits (needs Compact toolchain 0.31.1)
 
-# 증명 서버 없이 — 회로 동작과 적대적 테스트만
-npm run demo           # 회로 1~4
-npm run nav            # 회로 5 (체리피킹 차단 실증)
+# No proof server — circuit behaviour and adversarial tests only
+npm run demo           # circuits 1-4
+npm run nav            # circuit 5 (demonstrates cherry-pick prevention)
 
-# 증명 서버 필요 — 실제 ZK 증명
-npm run proof-server   # Docker. 최초 1회 SRS 다운로드로 1~2분 걸린다
-npm run live           # 거래 로그 증명
-npm run nav:proof      # NAV 델타 증명
+# Proof server required — real ZK proofs
+npm run proof-server   # Docker. First run downloads SRS, 1-2 minutes
+npm run live           # trade-log proof
+npm run nav:proof      # NAV delta proof
 
-# 온체인 배포 (로컬 devnet + Node 22 필요)
-npm run deploy                      # 로컬 devnet (기본)
-MN_NETWORK=preview npm run deploy   # 공용 테스트넷 (파우셋으로 tNIGHT 필요)
+# On-chain deployment (local devnet + Node 22)
+npm run deploy                      # local devnet (default)
+MN_NETWORK=preview npm run deploy   # public testnet (needs tNIGHT from the faucet)
 ```
 
-전체 스크립트:
+Full script list:
 
-| 스크립트 | 하는 일 | 선행 조건 |
+| Script | What it does | Prerequisites |
 |---|---|---|
-| `build` | 회로 컴파일 | Compact 0.31.1 |
-| `demo` / `nav` | 회로 실행 + 적대적 테스트 | 없음 |
-| `live` / `nav:proof` | 실제 ZK 증명 생성 | 증명 서버 |
-| `live:real` | 실제 포트폴리오로 증명 | 증명 서버 + `export` |
-| `export` | 페이퍼 트레이딩 → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
-| `deploy` | 온체인 배포 (local/preview/preprod) | devnet 또는 파우셋 + **Node 22** |
-| `proof-server` | 증명 서버 기동 | Docker |
+| `build` | compile circuits | Compact 0.31.1 |
+| `demo` / `nav` | run circuits + adversarial tests | none |
+| `live` / `nav:proof` | generate real ZK proofs | proof server |
+| `live:real` | prove over the real portfolio | proof server + `export` |
+| `export` | paper trading → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
+| `deploy` | on-chain deployment (local/preview/preprod) | devnet or faucet + **Node 22** |
+| `proof-server` | start the proof server | Docker |
 
-선행 조건이 빠지면 스택트레이스 대신 무엇을 해야 하는지 알려준다.
+When a prerequisite is missing you get an instruction, not a stack trace.
 
 ```
-$ npm run live                 # 증명 서버가 꺼져 있을 때
-✗ 증명 서버에 연결할 수 없습니다: http://127.0.0.1:6300
+$ npm run live                 # proof server is down
+X Cannot reach the proof server: http://127.0.0.1:6300
   npm run proof-server
 
-$ node src/deploy.mjs    # Node 20 일 때
-✗ Node 22 이상이 필요합니다 (현재 20.17.0).
+$ node src/deploy.mjs          # running Node 20
+X Node 22 or newer is required (currently 20.17.0).
   nvm use 22
 ```
 
-`build/` 아래에 `contract/`(TypeScript API), `zkir/`(ZK 중간표현),
-`keys/`(증명·검증 키)가 생성된다. 재생성 가능하므로 커밋하지 않는다.
+Compilation writes `contract/` (TypeScript API), `zkir/` (ZK intermediate
+representation) and `keys/` (proving and verifying keys) under `build/`.
+These are regenerable and are not committed.
 
-## 배경 자료
+## Background
 
-- 백테스트 원본 분석: [Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
-- 생존 편향으로 알파가 사라진 과정:
-  [블로그](https://seodongok.github.io/blog/2026-09-08-survivorship-bias-kills-alpha)
+- The original backtest analysis:
+  [Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
+- How survivorship bias erased the alpha:
+  [blog post (Korean)](https://seodongok.github.io/blog/2026-09-08-survivorship-bias-kills-alpha)
