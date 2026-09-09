@@ -12,20 +12,32 @@
  * 3-키 모델을 구현하고 WalletProvider/MidnightProvider 를 함께 만족한다.
  */
 import { writeFileSync } from 'node:fs';
-import pino from 'pino';
-import { WebSocket } from 'ws';
-import { LocalTestConfiguration, MidnightWalletProvider } from '@midnight-ntwrk/testkit-js';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { Contract } from '../build/track_record/contract/index.js';
-import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+import { requireNode } from './require-node.mjs';
+
+// testkit-js 는 Node 22+ 전용이다. Node 20 에서는 이 모듈들을 import 하는 것만으로
+// undici 내부에서 "webidl.util.markAsUncloneable is not a function" 으로 죽는다.
+// 버전 확인이 먼저 일어나야 하므로 나머지는 전부 동적 import 로 미룬다.
+requireNode(22);
+
+const { default: pino } = await import('pino');
+const { WebSocket } = await import('ws');
+const { LocalTestConfiguration, MidnightWalletProvider } = await import('@midnight-ntwrk/testkit-js');
+const { setNetworkId } = await import('@midnight-ntwrk/midnight-js-network-id');
+const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
+const { CompiledContract } = await import('@midnight-ntwrk/midnight-js-protocol/compact-js');
+const { NodeZkConfigProvider } = await import('@midnight-ntwrk/midnight-js-node-zk-config-provider');
+const { httpClientProofProvider } = await import('@midnight-ntwrk/midnight-js-http-client-proof-provider');
+const { indexerPublicDataProvider } = await import('@midnight-ntwrk/midnight-js-indexer-public-data-provider');
+const { levelPrivateStateProvider } = await import('@midnight-ntwrk/midnight-js-level-private-state-provider');
+const { Contract } = await import('../build/track_record/contract/index.js');
+const { makeWitnesses, makePrivateState } = await import('./witnesses.mjs');
+const { requireLocalDevnet, requireProofServer } = await import('./preflight.mjs');
 
 // midnight-local-dev 의 fund-ptr 로 NIGHT + DUST 를 받은 계정
+
+await requireLocalDevnet('http://127.0.0.1:8088/api/v4/graphql');
+await requireProofServer('http://127.0.0.1:6300');
+
 const SEED = process.env.PTR_SEED
   ?? '0000000000000000000000000000000000000000000000000000000000000002';
 

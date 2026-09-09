@@ -10,6 +10,10 @@ import { FileZkConfigProvider } from './zk-config.mjs';
 const PROOF_SERVER = process.env.PROOF_SERVER ?? 'http://localhost:6300';
 import { readFileSync } from 'node:fs';
 import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+import { requireProofServer } from './preflight.mjs';
+
+await requireProofServer(process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300');
+
 const TRADES_FILE = process.argv.find((a, i) => process.argv[i - 1] === '--trades');
 const BATCH_IDX = Number(process.argv.find((a, i) => process.argv[i - 1] === '--batch') ?? 0);
 const hexToBytes = (h) => Uint8Array.from(Buffer.from(h, 'hex'));

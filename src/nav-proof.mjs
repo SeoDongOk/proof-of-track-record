@@ -4,6 +4,10 @@ import { httpClientProvingProvider } from '@midnight-ntwrk/midnight-js-http-clie
 import { Contract } from '../build/track_record/contract/index.js';
 import { FileZkConfigProvider } from './zk-config.mjs';
 import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+import { requireProofServer } from './preflight.mjs';
+
+await requireProofServer(process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300');
+
 const PS = process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300';
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n & 0xff; return a; };
 const OFF = 10000n, NAV0 = 100000000n, ACTUAL = -400n, NAV1 = NAV0 * (OFF + ACTUAL) / OFF;
