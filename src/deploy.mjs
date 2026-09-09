@@ -1,123 +1,107 @@
 /**
- * 테스트넷 배포.
- *   MN_NETWORK=preview node src/deploy.mjs
+ * 온체인 배포. 로컬 devnet / Preview / Preprod 공통.
  *
- * 선행: wallet-{network}.seed 가 있고 파우셋에서 tNIGHT 를 받아둔 상태.
- * 결과: deployed-{network}.json 에 컨트랙트 주소 기록.
+ *   Node >= 22 필요 (testkit-js 요구사항)
+ *   nvm use 22 && node src/deploy.mjs
+ *
+ * 선행: midnight-local-dev 스택 기동 + 배포 계정 펀딩(NIGHT + DUST 등록).
+ *
+ * deploy.mjs 와 나눠 둔 이유: 현재 Midnight 은 수수료를 DUST 로 내는데
+ * @midnight-ntwrk/wallet 5.0.0 은 Zswap(shielded) 전용이라 DUST 를 다루지
+ * 못한다. testkit-js 의 MidnightWalletProvider 는 shielded+unshielded+dust
+ * 3-키 모델을 구현하고 WalletProvider/MidnightProvider 를 함께 만족한다.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { WebSocket } from 'ws';
-import { WalletBuilder } from '@midnight-ntwrk/wallet';
-import { NetworkId } from '@midnight-ntwrk/zswap';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-import { Contract } from '../build/track_record/contract/index.js';
-import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+import { writeFileSync } from 'node:fs';
+import { requireNode } from './require-node.mjs';
 
-const NET = process.env.MN_NETWORK ?? 'preview';
-const CFG = {
-  preview: { indexer: 'https://indexer.preview.midnight.network/api/v4/graphql',
-             indexerWs: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
-             node: 'https://rpc.preview.midnight.network', zswapNet: NetworkId.TestNet },
-  preprod: { indexer: 'https://indexer.preprod.midnight.network/api/v4/graphql',
-             indexerWs: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
-             node: 'https://rpc.preprod.midnight.network', zswapNet: NetworkId.TestNet },
-  // 로컬 devnet (midnight-local-dev). 파우셋이 필요 없다 — genesis 지갑이 이미 펀딩돼 있다.
-  undeployed: { indexer: 'http://127.0.0.1:8088/api/v4/graphql',
-                indexerWs: 'ws://127.0.0.1:8088/api/v4/graphql/ws',
-                node: 'http://127.0.0.1:9944', zswapNet: NetworkId.Undeployed },
-}[NET];
+// testkit-js 는 Node 22+ 전용이다. Node 20 에서는 이 모듈들을 import 하는 것만으로
+// undici 내부에서 "webidl.util.markAsUncloneable is not a function" 으로 죽는다.
+// 버전 확인이 먼저 일어나야 하므로 나머지는 전부 동적 import 로 미룬다.
+requireNode(22);
 
-// 로컬 devnet 배포용 시드. midnight-local-dev 의 genesis(...001) 가 이 주소로
-// NIGHT 를 보내고 DUST 를 등록해 준다 (fund-ptr.ts). 로컬 체인에서만 유효하다.
-const LOCAL_SEED = process.env.PTR_SEED
-  ?? '0000000000000000000000000000000000000000000000000000000000000002';
-const PROOF = process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300';
-const SEED_FILE = `wallet-${NET}.seed`;
-const OUT = `deployed-${NET}.json`;
+const { default: pino } = await import('pino');
+const { WebSocket } = await import('ws');
+const tk = await import('@midnight-ntwrk/testkit-js');
+const { LocalTestConfiguration, MidnightWalletProvider,
+        PreviewTestEnvironment, PreprodTestEnvironment } = tk;
+const { setNetworkId } = await import('@midnight-ntwrk/midnight-js-network-id');
+const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
+const { CompiledContract } = await import('@midnight-ntwrk/midnight-js-protocol/compact-js');
+const { NodeZkConfigProvider } = await import('@midnight-ntwrk/midnight-js-node-zk-config-provider');
+const { httpClientProofProvider } = await import('@midnight-ntwrk/midnight-js-http-client-proof-provider');
+const { indexerPublicDataProvider } = await import('@midnight-ntwrk/midnight-js-indexer-public-data-provider');
+const { levelPrivateStateProvider } = await import('@midnight-ntwrk/midnight-js-level-private-state-provider');
+const { Contract } = await import('../build/track_record/contract/index.js');
+const { makeWitnesses, makePrivateState } = await import('./witnesses.mjs');
+const { requireLocalDevnet, requireProofServer } = await import('./preflight.mjs');
 
-const seed = NET === 'undeployed'
-  ? LOCAL_SEED
-  : (existsSync(SEED_FILE) ? readFileSync(SEED_FILE, 'utf8').trim() : null);
-if (!seed) { console.error(`시드 없음: 먼저 node src/wallet-init.mjs`); process.exit(1); }
-setNetworkId(NET);
+// midnight-local-dev 의 fund-ptr 로 NIGHT + DUST 를 받은 계정
 
-// ── 지갑 ────────────────────────────────────────────────────────────────────
-const wallet = await WalletBuilder.build(
-  CFG.indexer, CFG.indexerWs, PROOF, CFG.node, seed, CFG.zswapNet, 'warn');
-wallet.start();
-
-console.log(`[${NET}] 지갑 동기화 대기...`);
-const state = await new Promise((res, rej) => {
-  const t = setTimeout(() => rej(new Error('동기화 타임아웃 120s')), 120000);
-  const sub = wallet.state().subscribe({
-    next: (s) => {
-      const p = s.syncProgress;
-      const synced = !p || p.synced === true || (p.lag && p.lag.applyGap === 0n && p.lag.sourceGap === 0n);
-      if (synced) { clearTimeout(t); sub.unsubscribe(); res(s); }
-    },
-    error: (e) => { clearTimeout(t); rej(e); },
-  });
-});
-const bal = Object.entries(state.balances ?? {}).map(([k, v]) => `${k.slice(0, 10)}…=${v}`).join(', ') || '(없음)';
-console.log(`  주소 ${state.address}`);
-console.log(`  잔액 ${bal}`);
-
-const hasFunds = Object.values(state.balances ?? {}).some((v) => v > 0n);
-if (!hasFunds) {
-  console.log(`\n❌ 잔액이 없어 배포할 수 없습니다.`);
-  console.log(NET === 'undeployed'
-    ? '   로컬 devnet 이 기동돼 있는지 확인하세요 (docker compose -f standalone.yml up -d)'
-    : `   파우셋: https://midnight-tmnight-${NET}.nethermind.dev/`);
-  console.log(`   주소  : ${state.address}`);
-  await wallet.close(); process.exit(2);
+if ((process.env.MN_NETWORK ?? 'local') === 'local') {
+  await requireLocalDevnet('http://127.0.0.1:8088/api/v4/graphql');
 }
+await requireProofServer(process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300');
 
-// ── 프로바이더 6종 ───────────────────────────────────────────────────────────
+const SEED = process.env.PTR_SEED
+  ?? '0000000000000000000000000000000000000000000000000000000000000002';
+
+// MN_NETWORK=local(기본) | preview | preprod
+// 지갑 계층은 셋 다 동일하다. testkit-js 의 MidnightWalletProvider 가
+// shielded+unshielded+dust 3-키 모델을 구현하므로 DUST 수수료를 낼 수 있다.
+const NET = process.env.MN_NETWORK ?? 'local';
+const env = NET === 'preview' ? new PreviewTestEnvironment().getEnvironmentConfiguration()
+          : NET === 'preprod' ? new PreprodTestEnvironment().getEnvironmentConfiguration()
+          : new LocalTestConfiguration({ indexer: '8088', node: '9944', proofServer: '6300' });
+
+setNetworkId(env.networkId);
+console.log(`[${NET}] network=${env.networkId}`);
+console.log(`  indexer ${env.indexer}`);
+console.log(`  node    ${env.node}`);
+
+const logger = pino({ level: 'warn' });
+const walletProvider = await MidnightWalletProvider.build(logger, env, SEED);
+await walletProvider.start(true);          // 자금이 보일 때까지 대기
+console.log('지갑 동기화 완료');
+console.log('  coinPublicKey:', walletProvider.getCoinPublicKey().slice(0, 40) + '…');
+
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n; return a; };
-const witnesses = makeWitnesses();
-const compiled = CompiledContract.make('track_record', Contract)
-  .pipe(CompiledContract.withWitnesses(witnesses))
-  .pipe(CompiledContract.withCompiledFileAssets('build/track_record'));
+
+// pipe 는 한 번에 여러 combinator 를 받는다 (Effect 스타일)
+const compiled = CompiledContract.make('track_record', Contract).pipe(
+  CompiledContract.withWitnesses(makeWitnesses()),
+  CompiledContract.withCompiledFileAssets('build/track_record'),
+);
 
 const providers = {
   privateStateProvider: levelPrivateStateProvider({
     privateStateStoreName: 'ptr-private-state',
-    accountId: state.address,
-    privateStoragePasswordProvider: async () => 'ptr-testnet-password',
+    accountId: 'ptr-local',
+    privateStoragePasswordProvider: async () => 'PtrLocalDevnet2026!',  // 16자+ / 대소문자·숫자·기호
   }),
-  publicDataProvider: indexerPublicDataProvider(CFG.indexer, CFG.indexerWs, WebSocket),
+  publicDataProvider: indexerPublicDataProvider(env.indexer, env.indexerWS, WebSocket),
   zkConfigProvider: new NodeZkConfigProvider('build/track_record'),
-  proofProvider: httpClientProofProvider(PROOF),
-  walletProvider: {
-    getCoinPublicKey: () => state.coinPublicKey,
-    getEncryptionPublicKey: () => state.encryptionPublicKey,
-    balanceTx: async (tx) => {
-      const r = await wallet.balanceTransaction(tx, []);
-      return wallet.proveTransaction(r);
-    },
-  },
-  midnightProvider: { submitTx: (tx) => wallet.submitTransaction(tx) },
+  proofProvider: httpClientProofProvider(env.proofServer),
+  walletProvider,
+  midnightProvider: walletProvider,
 };
 
-// ── 배포 ────────────────────────────────────────────────────────────────────
-console.log('\n배포 트랜잭션 생성 중 (증명 생성 포함, 수 분 소요)...');
+console.log('\n배포 트랜잭션 생성 중 (증명 포함, 수 분 소요)...');
 const t0 = Date.now();
 const deployed = await deployContract(providers, {
   compiledContract: compiled,
   privateStateId: 'ptr',
   initialPrivateState: makePrivateState(),
 });
-const addr = deployed.deployTxData.public.contractAddress;
-const txId = deployed.deployTxData.public.txId;
+const pub = deployed.deployTxData.public;
 console.log(`\n✅ 배포 완료 (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
-console.log(`   컨트랙트 주소: ${addr}`);
-console.log(`   트랜잭션     : ${txId}`);
-writeFileSync(OUT, JSON.stringify({ network: NET, contractAddress: addr, txId, deployedAt: new Date().toISOString() }, null, 2));
-console.log(`   기록         : ${OUT}`);
-await wallet.close();
+console.log(`   컨트랙트 주소: ${pub.contractAddress}`);
+console.log(`   트랜잭션     : ${pub.txId ?? pub.txHash ?? '(n/a)'}`);
+console.log(`   블록         : ${pub.blockHeight ?? '(n/a)'}`);
+writeFileSync(`deployed-${NET}.json`, JSON.stringify({
+  network: NET, networkId: env.networkId, contractAddress: pub.contractAddress,
+  txId: pub.txId ?? pub.txHash ?? null, blockHeight: pub.blockHeight ?? null,
+  deployedAt: new Date().toISOString(),
+}, null, 2));
+console.log(`   기록         : deployed-${NET}.json`);
+await walletProvider.stop();
+process.exit(0);

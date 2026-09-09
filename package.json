@@ -10,11 +10,9 @@
     "live": "node src/live-proof.mjs",
     "export": "python src/export_trades.py --out trades.json",
     "live:real": "node src/live-proof.mjs --trades trades.json --batch 0 && node src/live-proof.mjs --trades trades.json --batch 1",
-    "wallet": "node src/wallet-init.mjs",
     "deploy": "node src/deploy.mjs",
     "nav": "node src/nav-demo.mjs",
-    "nav:proof": "node src/nav-proof.mjs",
-    "deploy:local": "node src/deploy-local.mjs"
+    "nav:proof": "node src/nav-proof.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.16.0",

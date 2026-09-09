@@ -77,7 +77,7 @@ Exception: potential witness-value disclosure must be declared but is not:
 - [x] **로컬 실행 데모** (`npm run demo`) — 적대적 테스트 포함
 - [x] **실제 ZK 증명 생성** (`npm run live`) — 증명 서버 8.1.0 연동
 - [x] **실제 포트폴리오 데이터로 증명** (`npm run export && npm run live:real`)
-- [x] **온체인 배포** — 로컬 devnet, 블록 319 (`npm run deploy:local`)
+- [x] **온체인 배포** — 로컬 devnet, 블록 319 (`npm run deploy`)
 
 ### 데모 결과
 
@@ -287,13 +287,12 @@ docker compose -f standalone.yml up -d      # node:9944 indexer:8088 proof:6300
 
 # 3) 배포
 cd ../proof-of-track-record
-nvm use 22 && npm run deploy:local
+nvm use 22 && npm run deploy
 ```
 
-### 왜 배포 스크립트가 두 개인가
+### 지갑 SDK 세대 차이
 
-`deploy.mjs`(공용 테스트넷)와 `deploy-local.mjs`(로컬)를 나눠 두었다.
-이유는 **지갑 SDK 세대 차이**다.
+배포가 한동안 막혀 있었다. 원인은 코드가 아니라 **지갑 SDK 세대 차이**였다.
 
 | | `@midnight-ntwrk/wallet` 5.0.0 | `testkit-js` `MidnightWalletProvider` |
 |---|---|---|
@@ -305,6 +304,11 @@ nvm use 22 && npm run deploy:local
 생기는 모델인데 wallet 5.0.0 에는 그 개념이 없어, 펀딩된 주소와 배포 지갑
 주소가 어긋나 배포가 불가능했다. `testkit-js` 의 `MidnightWalletProvider` 는
 `WalletProvider` 와 `MidnightProvider` 를 동시에 구현하므로 그대로 끼우면 된다.
+
+그래서 `deploy.mjs` 하나로 로컬 devnet / Preview / Preprod 를 모두 다룬다.
+지갑 계층이 셋 다 동일하고, 환경 설정만 `MN_NETWORK` 로 갈린다.
+wallet 5.0.0 기반 스크립트는 전부 제거했다 — 파우셋을 받아도 DUST 수수료를
+낼 수 없어 애초에 동작할 수 없는 코드였다.
 
 로그로 확인된 지갑 상태:
 ```
@@ -338,7 +342,7 @@ npm run build                  9 circuits
 npm run demo                   5/5 ✅   (증명 서버 불필요)
 npm run nav                    체리피킹 거부 포함 5건 판정 ✅
 npm run live                   ZK 증명 4508 bytes ✅
-npm run deploy:local           온체인 배포, 블록 580 ✅ (Node 22)
+npm run deploy           온체인 배포, 블록 580 ✅ (Node 22)
 ```
 
 선행 조건은 Compact 툴체인 0.31.1 (`compact update 0.31`), `live` 에 한해
@@ -360,7 +364,8 @@ npm run live           # 거래 로그 증명
 npm run nav:proof      # NAV 델타 증명
 
 # 온체인 배포 (로컬 devnet + Node 22 필요)
-npm run deploy:local
+npm run deploy                      # 로컬 devnet (기본)
+MN_NETWORK=preview npm run deploy   # 공용 테스트넷 (파우셋으로 tNIGHT 필요)
 ```
 
 전체 스크립트:
@@ -372,9 +377,8 @@ npm run deploy:local
 | `live` / `nav:proof` | 실제 ZK 증명 생성 | 증명 서버 |
 | `live:real` | 실제 포트폴리오로 증명 | 증명 서버 + `export` |
 | `export` | 페이퍼 트레이딩 → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
-| `deploy:local` | 로컬 devnet 온체인 배포 | devnet + **Node 22** |
+| `deploy` | 온체인 배포 (local/preview/preprod) | devnet 또는 파우셋 + **Node 22** |
 | `proof-server` | 증명 서버 기동 | Docker |
-| `wallet` / `deploy` | 공용 테스트넷용 (파우셋 필요) | — |
 
 선행 조건이 빠지면 스택트레이스 대신 무엇을 해야 하는지 알려준다.
 
@@ -383,7 +387,7 @@ $ npm run live                 # 증명 서버가 꺼져 있을 때
 ✗ 증명 서버에 연결할 수 없습니다: http://127.0.0.1:6300
   npm run proof-server
 
-$ node src/deploy-local.mjs    # Node 20 일 때
+$ node src/deploy.mjs    # Node 20 일 때
 ✗ Node 22 이상이 필요합니다 (현재 20.17.0).
   nvm use 22
 ```
