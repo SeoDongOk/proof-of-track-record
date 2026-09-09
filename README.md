@@ -2,21 +2,27 @@
 
 English · **[한국어](README.ko.md)**
 
-**Prove trading performance without revealing your strategy or positions.**
+**Commit the strategy before you trade. Prove the result after. Neither can be revised.**
 
 Submission for the Midnight Korea Hackathon 2026.
 
 ---
 
-## The problem
+## The problem — a number can be real and still lie
 
-Claims about trading performance cannot be verified.
+Everyone asks the same question about a track record: *did they fake it?*
 
-- **Reveal the strategy** and the alpha dies. Once others copy it, it's over.
-- **Don't reveal it** and nobody has a reason to believe you. Screenshots can be
-  faked, and a backtest can always be re-run until it looks good.
+That is the easy failure. The dangerous one is a number that is **completely
+genuine and still misleading**, because you are only shown the strategy that
+survived.
 
-This is not a hypothetical. The author of this repository ran into it directly.
+> "I ran ten strategies for a year. Here is the one that won."
+
+Every trade is real. Every fill is verifiable. The return is exactly what it
+says. And it tells you nothing about what happens next, because the selection
+happened *before* the number was generated — and selection leaves no trace.
+
+This is not hypothetical. It happened to the author of this repository.
 
 Backtesting an unsupervised-learning strategy on the S&P 500 produced
 **23.63% annualized, Sharpe 0.95** — twice SPY's 11.37%. Then came the digging:
@@ -28,28 +34,61 @@ Backtesting an unsupervised-learning strategy on the S&P 500 produced
 | Statistical significance (Newey-West) | excess return **p = 0.566** — indistinguishable from zero |
 | Deflated Sharpe (data-snooping adjusted) | **0.55** |
 
-**There was no alpha.** But establishing that required rebuilding the entire
-pipeline and scraping 97 months of Wikipedia revisions to reconstruct
-point-in-time index membership.
+**There was no alpha.** Establishing that took rebuilding the entire pipeline and
+scraping 97 months of Wikipedia revisions to reconstruct point-in-time index
+membership.
 
-In other words: **unless the reader does that labor themselves, no performance
-claim can be verified.**
+And nothing in the original result was *forged*. The backtest ran correctly on
+real prices. It was simply re-runnable — parameters adjusted, universe redefined,
+until the numbers looked good. **That process leaves no trace, and someone
+reading only the final figure has no way to detect it.**
 
-## The approach
+## Why verifying the numbers is not enough
 
-Zero-knowledge proofs close exactly this gap. **Both sides reach trust without
-sharing prior knowledge** — the verifier never learns the strategy, and the
-prover never hands it over.
+There are already systems that prove a track record is genuine.
+[Obscura](https://blog.horizen.io/trade-with-proof-not-trust-how-obscura-is-making-reputation-private-and-verifiable)
+pulls trades from the exchange and proves aggregate PnL without exposing them.
+[Proof of Alpha](https://minaprotocol.com/blog/proof-of-alpha) does something
+similar on Mina. Both work, and both solve a real problem.
 
-This DApp lets a trader prove:
+Neither addresses the one above. They prove **the trades you show are real**.
+They cannot prove **these are the only trades there were** — or, more precisely,
+that this is the only strategy you ran.
 
-1. **Prior commitment** — strategy parameters are hashed onto the ledger
-   *before* trading begins, so they cannot be tuned afterwards to flatter the
-   results (post-hoc overfitting).
-2. **Provenance of returns** — the reported return was computed from the
-   committed trade log. Individual fills stay private.
-3. **Risk compliance** — per-position caps and leverage limits were respected,
-   without disclosing the positions.
+Authentication answers "is this number true?"
+It does not answer "**was this number selected after the fact?**"
+
+## The approach — pre-commitment, and why it needs ZK
+
+Fix the strategy on-chain *before* the outcome is known. Afterwards, prove the
+performance was produced by **that** committed strategy.
+
+Now the claim changes shape. You can only report results from a strategy you
+registered before you knew how it would do. Running ten and presenting the
+winner stops working: the other nine are either committed — and visible as
+commitments — or were never registered and cannot be claimed at all.
+
+**Why this needs zero-knowledge:** pre-commitment alone is easy. Hash a document,
+timestamp it on any chain — that is established practice in empirical research
+(OpenTimestamps and similar). But a trader cannot publish the strategy, or the
+alpha dies. So the commitment must hide its contents, and the later proof must
+show the performance came from *that hidden thing* without opening it.
+
+That is exactly what a ZK circuit does, and it is why a hash alone is not enough:
+to prove "return ≥ 15% under the committed strategy" without ZK you would have to
+reveal the strategy and every trade so the verifier could recompute it.
+
+This DApp therefore proves three things:
+
+1. **Prior commitment** — strategy parameters are hashed onto the ledger *before*
+   trading begins. They cannot be tuned afterwards to flatter the results.
+2. **Provenance of returns** — the reported return was computed from the committed
+   trade log and the committed account NAV. Individual fills stay private.
+3. **Risk compliance** — per-position caps were respected, without disclosing the
+   positions.
+
+Privacy is not the headline feature here. It is the thing that makes
+pre-commitment usable at all.
 
 ## Why use this — versus what exists today
 
@@ -95,7 +134,7 @@ Pin the strategy hash and the NAV on-chain *before* the outcome is known, and:
 - You cannot insert or drop trades after the fact
 
 This project started from exactly that failure. It is the same backtest described
-in [The problem](#the-problem) — 23.63% became 14.48% once survivorship bias was
+in [The problem](#the-problem--a-number-can-be-real-and-still-lie) — 23.63% became 14.48% once survivorship bias was
 removed, and the excess return carried p = 0.566.
 
 The dangerous part is that the process **leaves no trace**. A backtest can be
