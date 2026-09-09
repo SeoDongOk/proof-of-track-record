@@ -18,7 +18,24 @@ def main():
     ap.add_argument("--out", default="trades.json")
     a = ap.parse_args()
 
-    from paper_trading.quotes import YFinanceQuotes
+    try:
+        from paper_trading.quotes import YFinanceQuotes
+    except ImportError:
+        sys.exit(
+            "\n\033[31m✗ paper_trading 패키지를 찾을 수 없습니다.\033[0m\n"
+            "\033[2m  이 스크립트는 Algorithmic_Trading_YL 의 페이퍼 트레이딩 계좌를 읽습니다.\033[0m\n\n"
+            "  git clone https://github.com/SeoDongOk/Algorithmic_Trading_YL.git\n"
+            "  PYTHONPATH=/path/to/Algorithmic_Trading_YL python src/export_trades.py\n\n"
+            "\033[2m  그 저장소 없이 실제 ZK 증명을 보려면: npm run live (내장 샘플)\033[0m\n"
+            "\033[2m  같은 회로, 같은 증명 서버를 씁니다.\033[0m\n")
+
+    if not os.path.exists(a.state):
+        sys.exit(
+            f"\n\033[31m✗ 페이퍼 트레이딩 상태 파일이 없습니다: {a.state}\033[0m\n"
+            "\033[2m  Algorithmic_Trading_YL 에서 먼저 계좌를 만들어야 합니다.\033[0m\n\n"
+            "  python -m paper_trading.cli init --cash 10000000\n"
+            "  python -m paper_trading.cli rebalance --tickers AAPL,MSFT,NVDA\n")
+
     d = json.load(open(a.state))
     b = d["broker"]
     pos = {t: p for t, p in b["positions"].items() if p["qty"] > 0}
