@@ -62,9 +62,27 @@ SPY(11.37%)의 2배다. 그런데 파고들었더니,
 전략에서 나왔음을 증명한다.
 
 그러면 주장의 성격이 바뀐다. 결과를 알기 전에 등록해 둔 전략의 성적만
-보고할 수 있다. 10개를 돌려 이긴 하나를 내미는 건 통하지 않는다.
-나머지 9개는 커밋되어 커밋으로 보이거나, 애초에 등록되지 않아 주장 자체가
-불가능하기 때문이다.
+보고할 수 있다.
+
+컨트랙트 하나에 전략 하나를 잠그는 것만으로는 부족하다. 컨트랙트를 10개
+배포하고 이긴 것만 보여주면 그만이기 때문이다. 그래서 등록은 **트레이더
+식별자를 키로 하는 공유 레지스트리**에 쌓이고, **등록 개수가 공개**된다.
+
+10개를 돌려 이긴 하나를 내미는 게 불가능해지는 건 아니다. **숨길 수 없게**
+될 뿐이다. 검증자는 레지스트리에서 10 을 읽고, 10개 중 하나를 보고 있음을
+안다. "1전 1승" 과 "10개 중 1개" 가 더는 같아 보이지 않는다.
+
+```
+트레이더가 전략 10개 등록 (파라미터는 비공개)
+  원장: strategyCount[trader] = 10
+
+이긴 7번 증명       -> 통과, 회로가 10 을 함께 반환
+미등록 전략 주장    -> 거부: strategy does not match the registered commitment
+3번을 7번인 척 제출 -> 거부: 커밋이 슬롯에 묶여 있다
+```
+
+`npm run selection` 으로 재현. `npm run selection:proof` 는 실제 ZK 증명을
+만든다 (4508 bytes, 9.7s).
 
 **왜 영지식이 필요한가:** 사전 커밋만이라면 쉽다. 문서를 해시해서 아무 체인에나
 타임스탬프를 찍으면 된다 — 실증 연구에서 확립된 관행이다(OpenTimestamps 등).
@@ -223,6 +241,7 @@ Exception: potential witness-value disclosure must be declared but is not:
 
 - [x] Compact 툴체인 (네트워크와 맞춘 **0.31.1**, language_version 0.23, runtime 0.16.0)
 - [x] **회로 1** 전략 사전 커밋 `commitStrategy` / `revealMatchesCommitment`
+- [x] **회로 6** 전략 레지스트리 `registerStrategy` / `provenanceOf` (시행 횟수를 공개)
 - [x] **회로 2** 거래 머클 커밋 `recordTrade`
 - [x] **회로 3** 수익률 임계값 증명 `proveReturnAtLeast`
 - [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
@@ -526,8 +545,8 @@ MN_NETWORK=preview npm run deploy   # 공용 테스트넷 (파우셋으로 tNIGH
 | 스크립트 | 하는 일 | 선행 조건 |
 |---|---|---|
 | `build` | 회로 컴파일 | Compact 0.31.1 |
-| `demo` / `nav` | 회로 실행 + 적대적 테스트 | 없음 |
-| `live` / `nav:proof` | 실제 ZK 증명 생성 | 증명 서버 |
+| `demo` / `nav` / `selection` | 회로 실행 + 적대적 테스트 | 없음 |
+| `live` / `nav:proof` / `selection:proof` | 실제 ZK 증명 생성 | 증명 서버 |
 | `live:real` | 실제 포트폴리오로 증명 | 증명 서버 + `export` |
 | `export` | 페이퍼 트레이딩 → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
 | `deploy` | 온체인 배포 (local/preview/preprod) | devnet 또는 파우셋 + **Node 22** |

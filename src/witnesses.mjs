@@ -31,3 +31,25 @@ export const makePrivateState = (overrides = {}) => {
     ...overrides,
   };
 };
+
+
+/**
+ * Trade 를 머클 리프 해시로 변환한다.
+ *
+ * 생성 코드의 `contract._persistentHash_N` 은 회로가 늘면 N 이 바뀐다.
+ * 실제로 회로 6 을 추가했을 때 _persistentHash_0 이 다른 타입을 가리키게 되어
+ * demo 가 깨졌다. 타입 서술자를 직접 만들어 그 의존을 없앤다.
+ *
+ * struct Trade { timestamp: Uint<64>; pnlBps: Uint<32>; salt: Bytes<32>; }
+ */
+export function tradeLeafHash(rt, trade) {
+  const u64 = new rt.CompactTypeUnsignedInteger((1n << 64n) - 1n, 8);
+  const u32 = new rt.CompactTypeUnsignedInteger((1n << 32n) - 1n, 4);
+  const b32 = new rt.CompactTypeBytes(32);
+  const TradeType = {
+    alignment: () => u64.alignment().concat(u32.alignment().concat(b32.alignment())),
+    toValue: (v) => u64.toValue(v.timestamp).concat(u32.toValue(v.pnlBps).concat(b32.toValue(v.salt))),
+    fromValue: (v) => ({ timestamp: u64.fromValue(v), pnlBps: u32.fromValue(v), salt: b32.fromValue(v) }),
+  };
+  return rt.persistentHash(TradeType, trade);
+}

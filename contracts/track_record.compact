@@ -28,11 +28,26 @@ export circuit pnlOffset(): Uint<32> {
 
 // ── 공개 원장 ───────────────────────────────────────────────────────────────
 
-/** 거래 시작 전에 박아두는 전략 파라미터 커밋. 사후 변경을 막는다. */
+/** 현재 증명 대상 전략의 커밋 */
 export ledger strategyCommitment: Bytes<32>;
 
 /** 전략이 커밋됐는지 */
 export ledger strategyLocked: Boolean;
+
+// ── 전략 시행 레지스트리 ────────────────────────────────────────────────────
+//
+// 한 컨트랙트 안에서 전략을 못 바꾸게 하는 것만으로는 부족하다.
+// 컨트랙트를 10개 배포하고 이긴 하나만 보여주면 그만이기 때문이다.
+//
+// 그래서 트레이더 식별자별로 **등록한 전략 개수를 공개**한다.
+// 시행 자체를 막을 수는 없다. 다만 몇 번 시도했는지를 숨길 수 없게 만든다.
+// 검증자는 "이 사람은 10개를 등록했고 그중 하나를 보여주고 있다"를 알게 된다.
+
+/** 트레이더 ID -> 등록한 전략 개수 (공개) */
+export ledger strategyCount: Map<Bytes<32>, Uint<64>>;
+
+/** hash(트레이더 ID, 순번) -> 전략 커밋 해시 (공개) */
+export ledger strategyLedger: Map<Bytes<32>, Bytes<32>>;
 
 /** 거래가 발생할 때마다 커밋을 누적하는 머클 트리 (최대 2^10 = 1024건) */
 export ledger tradeLog: HistoricMerkleTree<10, Bytes<32>>;
@@ -54,9 +69,10 @@ witness nextTrade(): Trade;
 // ── 회로 1: 전략 사전 커밋 ──────────────────────────────────────────────────
 
 /**
- * 거래를 시작하기 전에 전략 파라미터를 커밋한다.
- * 원장에는 커밋 해시만 올라가므로 파라미터는 드러나지 않지만,
- * 이후에 파라미터를 바꿔 성과를 꾸미는 것은 불가능해진다.
+ * 단일 전략 커밋. 한 컨트랙트 안에서 전략이 바뀌지 않음을 보장한다.
+ *
+ * 이것만으로는 "컨트랙트 10개 배포 후 이긴 것만 공개" 를 못 막는다.
+ * 그건 registerStrategy / provenanceOf 가 담당한다.
  */
 export circuit commitStrategy(): [] {
   assert(!strategyLocked, "strategy already committed");
@@ -65,6 +81,53 @@ export circuit commitStrategy(): [] {
   // persistentCommit(값, 개봉난수) -> 커밋 해시. 해시만 공개 대상이다.
   strategyCommitment.write(disclose(persistentCommit<Bytes<32>>(params, opening)));
   strategyLocked.write(true);
+}
+
+/**
+ * 전략을 트레이더 레지스트리에 등록한다.
+ *
+ * 원장에 남는 것은 (a) 이 트레이더가 지금까지 등록한 전략 개수 (b) 각 전략의
+ * 커밋 해시뿐이다. 파라미터는 드러나지 않는다.
+ *
+ * 요점은 개수가 **공개**라는 것이다. 10개를 등록하고 하나만 증명해도
+ * 검증자는 strategyCount 에서 10 을 읽는다. 시행 횟수를 숨길 수 없다.
+ */
+export circuit registerStrategy(traderId: Bytes<32>): [] {
+  const params = strategyParams();
+  const opening = strategyOpening();
+  const commitment = persistentCommit<Bytes<32>>(params, opening);
+
+  const prior = strategyCount.member(disclose(traderId))
+    ? strategyCount.lookup(disclose(traderId))
+    : 0;
+  const index = (prior + 1) as Uint<64>;
+
+  // 슬롯 키 = hash(트레이더 ID, 순번). 같은 트레이더의 n번째 전략을 가리킨다.
+  const slot = persistentHash<[Bytes<32>, Uint<64>]>([disclose(traderId), disclose(index)]);
+
+  strategyCount.insert(disclose(traderId), disclose(index));
+  strategyLedger.insert(disclose(slot), disclose(commitment));
+}
+
+/**
+ * "이 전략은 이 트레이더가 등록한 n번째이고, 총 등록 수는 N 이다"를 확인한다.
+ *
+ * 성과 증명과 함께 쓰면 검증자는 분모를 알게 된다. 10개 중 1개를 보고 있다는
+ * 사실이 드러나므로, 이긴 것만 골라 보여주는 것이 무의미해진다.
+ */
+export circuit provenanceOf(traderId: Bytes<32>, index: Uint<64>): Uint<64> {
+  const params = strategyParams();
+  const opening = strategyOpening();
+  const commitment = persistentCommit<Bytes<32>>(params, opening);
+
+  const slot = persistentHash<[Bytes<32>, Uint<64>]>([disclose(traderId), disclose(index)]);
+
+  assert(strategyLedger.member(disclose(slot)), "no strategy at that slot");
+  assert(strategyLedger.lookup(disclose(slot)) == commitment,
+         "strategy does not match the registered commitment");
+
+  // 반환값이 곧 분모다. 이 트레이더가 등록한 전략 총 개수.
+  return strategyCount.lookup(disclose(traderId));
 }
 
 /**

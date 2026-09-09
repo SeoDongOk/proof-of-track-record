@@ -1,6 +1,6 @@
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { Contract, ledger } from '../build/track_record/contract/index.js';
-import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+import { makeWitnesses, makePrivateState, tradeLeafHash } from './witnesses.mjs';
 
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n & 0xff; a[1] = (n >> 8) & 0xff; return a; };
 const OFFSET = 100000n;   // pnlBps 오프셋: 100000 = 0bp
@@ -55,7 +55,7 @@ console.log('   기록 건수:', L().tradeCount);
 console.log('   머클 루트:', L().tradeLog.root().field.toString().slice(0, 20) + '…');
 
 console.log('\n── 3) 수익률 임계값 증명 ──────────────────────────');
-const paths = trades.map((t) => L().tradeLog.findPathForLeaf(contract._persistentHash_0(t)));
+const paths = trades.map((t) => L().tradeLog.findPathForLeaf(tradeLeafHash(rt, t)));
 console.log('   머클 경로 확보:', paths.filter(Boolean).length, '/ 8');
 ctx.currentPrivateState.provenTrades = trades;
 ctx.currentPrivateState.provenPaths = paths;

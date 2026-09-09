@@ -12,7 +12,9 @@
     "live:real": "node src/live-proof.mjs --trades trades.json --batch 0 && node src/live-proof.mjs --trades trades.json --batch 1",
     "deploy": "node src/deploy.mjs",
     "nav": "node src/nav-demo.mjs",
-    "nav:proof": "node src/nav-proof.mjs"
+    "nav:proof": "node src/nav-proof.mjs",
+    "selection": "node src/selection-demo.mjs",
+    "selection:proof": "node src/selection-proof.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.16.0",

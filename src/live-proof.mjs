@@ -9,7 +9,7 @@ import { FileZkConfigProvider } from './zk-config.mjs';
 
 const PROOF_SERVER = process.env.PROOF_SERVER ?? 'http://localhost:6300';
 import { readFileSync } from 'node:fs';
-import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+import { makeWitnesses, makePrivateState, tradeLeafHash } from './witnesses.mjs';
 import { requireProofServer } from './preflight.mjs';
 
 await requireProofServer(process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300');
@@ -64,7 +64,7 @@ if (TRADES_FILE) {
 console.log(`데이터: ${source}`);
 ctx.currentPrivateState.provenTrades = trades;
 ctx.currentPrivateState.provenPaths =
-  trades.map((t) => L().tradeLog.findPathForLeaf(contract._persistentHash_0(t)));
+  trades.map((t) => L().tradeLog.findPathForLeaf(tradeLeafHash(rt, t)));
 
 // ── 참인 주장: 증명 생성 ────────────────────────────────────────────────────
 const CIRCUIT = 'proveReturnAtLeast';

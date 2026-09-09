@@ -64,9 +64,27 @@ Fix the strategy on-chain *before* the outcome is known. Afterwards, prove the
 performance was produced by **that** committed strategy.
 
 Now the claim changes shape. You can only report results from a strategy you
-registered before you knew how it would do. Running ten and presenting the
-winner stops working: the other nine are either committed — and visible as
-commitments — or were never registered and cannot be claimed at all.
+registered before you knew how it would do.
+
+Locking one strategy per contract is not enough on its own — you could deploy ten
+contracts and show the one that won. So registrations go into a **shared registry
+keyed by trader identity, and the number of registrations is public.**
+
+Running ten and presenting the winner does not stop being possible. It stops being
+*hideable*: the verifier reads 10 from the registry and sees they are being shown
+one of ten. A record of "1 for 1" and a record of "1 of 10" no longer look alike.
+
+```
+Trader registers 10 strategies (parameters never disclosed)
+  ledger: strategyCount[trader] = 10
+
+Prove the winner (#7)      -> accepted, and the circuit returns 10
+Claim an unregistered one  -> rejected: strategy does not match the registered commitment
+Pass #3 off as #7          -> rejected: commitment is bound to its slot
+```
+
+Reproduce with `npm run selection`; `npm run selection:proof` generates the real
+ZK proof (4508 bytes, 9.7s).
 
 **Why this needs zero-knowledge:** pre-commitment alone is easy. Hash a document,
 timestamp it on any chain — that is established practice in empirical research
@@ -236,6 +254,7 @@ are rejected.
 
 - [x] Compact toolchain (**0.31.1**, matched to the live network; language_version 0.23, runtime 0.16.0)
 - [x] **Circuit 1** strategy pre-commitment — `commitStrategy` / `revealMatchesCommitment`
+- [x] **Circuit 6** strategy registry — `registerStrategy` / `provenanceOf` (exposes how many attempts were made)
 - [x] **Circuit 2** trade Merkle commitment — `recordTrade`
 - [x] **Circuit 3** return threshold proof — `proveReturnAtLeast`
 - [x] **Circuit 4** risk limit proof — `commitPortfolio` / `proveMaxWeight`
@@ -555,8 +574,8 @@ Full script list:
 | Script | What it does | Prerequisites |
 |---|---|---|
 | `build` | compile circuits | Compact 0.31.1 |
-| `demo` / `nav` | run circuits + adversarial tests | none |
-| `live` / `nav:proof` | generate real ZK proofs | proof server |
+| `demo` / `nav` / `selection` | run circuits + adversarial tests | none |
+| `live` / `nav:proof` / `selection:proof` | generate real ZK proofs | proof server |
 | `live:real` | prove over the real portfolio | proof server + `export` |
 | `export` | paper trading → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
 | `deploy` | on-chain deployment (local/preview/preprod) | devnet or faucet + **Node 22** |
