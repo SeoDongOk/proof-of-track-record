@@ -21,3 +21,6 @@ wallet-*.json
 
 # 증명 입력 (비공개 witness: salt 포함)
 trades*.json
+
+# 배포 결과는 devnet 재기동 시 무효
+deployed-*.json
