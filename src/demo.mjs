@@ -1,5 +1,6 @@
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { Contract, ledger } from '../build/track_record/contract/index.js';
+import { makeWitnesses, makePrivateState } from './witnesses.mjs';
 
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n & 0xff; a[1] = (n >> 8) & 0xff; return a; };
 const OFFSET = 100000n;   // pnlBps 오프셋: 100000 = 0bp
@@ -15,15 +16,9 @@ const ps = {
   portfolioOpening: b32(0xEF),
 };
 
-const w = (k) => ({ privateState }) => [privateState, privateState[k]];
-const witnesses = {
-  strategyParams: w('strategyParams'), strategyOpening: w('strategyOpening'),
-  nextTrade: w('nextTrade'), provenTrades: w('provenTrades'),
-  provenPaths: w('provenPaths'), portfolioWeights: w('portfolioWeights'),
-  portfolioOpening: w('portfolioOpening'),
-};
+const witnesses = makeWitnesses();
 
-const contract = new Contract(witnesses);
+const contract = new Contract(makeWitnesses());
 const addr = rt.sampleContractAddress();
 const zswap = rt.emptyZswapLocalState(rt.encodeCoinPublicKey('00'.repeat(32)));
 

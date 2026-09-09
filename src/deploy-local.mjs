@@ -23,6 +23,7 @@ import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { Contract } from '../build/track_record/contract/index.js';
+import { makeWitnesses, makePrivateState } from './witnesses.mjs';
 
 // midnight-local-dev 의 fund-ptr 로 NIGHT + DUST 를 받은 계정
 const SEED = process.env.PTR_SEED
@@ -43,14 +44,10 @@ console.log('지갑 동기화 완료');
 console.log('  coinPublicKey:', walletProvider.getCoinPublicKey().slice(0, 40) + '…');
 
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n; return a; };
-const w = (k) => ({ privateState }) => [privateState, privateState[k]];
-const KEYS = ['strategyParams','strategyOpening','nextTrade','provenTrades','provenPaths',
-              'portfolioWeights','portfolioOpening','navOpenValue','navOpenSalt',
-              'navCloseValue','navCloseSalt'];
 
 // pipe 는 한 번에 여러 combinator 를 받는다 (Effect 스타일)
 const compiled = CompiledContract.make('track_record', Contract).pipe(
-  CompiledContract.withWitnesses(Object.fromEntries(KEYS.map((k) => [k, w(k)]))),
+  CompiledContract.withWitnesses(makeWitnesses()),
   CompiledContract.withCompiledFileAssets('build/track_record'),
 );
 
@@ -72,11 +69,7 @@ const t0 = Date.now();
 const deployed = await deployContract(providers, {
   compiledContract: compiled,
   privateStateId: 'ptr',
-  initialPrivateState: {
-    strategyParams: b32(0xAB), strategyOpening: b32(0xCD), nextTrade: null,
-    provenTrades: [], provenPaths: [], portfolioWeights: [], portfolioOpening: b32(0xEF),
-    navOpenValue: 0n, navOpenSalt: b32(10), navCloseValue: 0n, navCloseSalt: b32(11),
-  },
+  initialPrivateState: makePrivateState(),
 });
 const pub = deployed.deployTxData.public;
 console.log(`\n✅ 배포 완료 (${((Date.now() - t0) / 1000).toFixed(0)}s)`);

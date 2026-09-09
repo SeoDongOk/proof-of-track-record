@@ -17,6 +17,7 @@ import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { Contract } from '../build/track_record/contract/index.js';
+import { makeWitnesses, makePrivateState } from './witnesses.mjs';
 
 const NET = process.env.MN_NETWORK ?? 'preview';
 const CFG = {
@@ -79,12 +80,7 @@ if (!hasFunds) {
 
 // ── 프로바이더 6종 ───────────────────────────────────────────────────────────
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n; return a; };
-const w = (k) => ({ privateState }) => [privateState, privateState[k]];
-const witnesses = {
-  strategyParams: w('strategyParams'), strategyOpening: w('strategyOpening'),
-  nextTrade: w('nextTrade'), provenTrades: w('provenTrades'), provenPaths: w('provenPaths'),
-  portfolioWeights: w('portfolioWeights'), portfolioOpening: w('portfolioOpening'),
-};
+const witnesses = makeWitnesses();
 const compiled = CompiledContract.make('track_record', Contract)
   .pipe(CompiledContract.withWitnesses(witnesses))
   .pipe(CompiledContract.withCompiledFileAssets('build/track_record'));
@@ -115,10 +111,7 @@ const t0 = Date.now();
 const deployed = await deployContract(providers, {
   compiledContract: compiled,
   privateStateId: 'ptr',
-  initialPrivateState: {
-    strategyParams: b32(0xAB), strategyOpening: b32(0xCD), nextTrade: null,
-    provenTrades: [], provenPaths: [], portfolioWeights: [], portfolioOpening: b32(0xEF),
-  },
+  initialPrivateState: makePrivateState(),
 });
 const addr = deployed.deployTxData.public.contractAddress;
 const txId = deployed.deployTxData.public.txId;

@@ -7,6 +7,7 @@
  */
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { Contract, ledger } from '../build/track_record/contract/index.js';
+import { makeWitnesses, makePrivateState } from './witnesses.mjs';
 
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n & 0xff; a[1] = (n >> 8) & 0xff; return a; };
 const OFF = 10000n;                       // returnOffset()
@@ -16,11 +17,7 @@ const ps = {
   provenTrades: [], provenPaths: [], portfolioWeights: [], portfolioOpening: b32(3),
   navOpenValue: 0n, navOpenSalt: b32(10), navCloseValue: 0n, navCloseSalt: b32(11),
 };
-const w = (k) => ({ privateState }) => [privateState, privateState[k]];
-const contract = new Contract(Object.fromEntries(
-  ['strategyParams','strategyOpening','nextTrade','provenTrades','provenPaths',
-   'portfolioWeights','portfolioOpening','navOpenValue','navOpenSalt',
-   'navCloseValue','navCloseSalt'].map((k) => [k, w(k)])));
+const contract = new Contract(makeWitnesses());
 
 const ctor = contract.initialState({
   initialPrivateState: ps,

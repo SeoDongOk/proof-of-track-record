@@ -9,22 +9,15 @@ import { FileZkConfigProvider } from './zk-config.mjs';
 
 const PROOF_SERVER = process.env.PROOF_SERVER ?? 'http://localhost:6300';
 import { readFileSync } from 'node:fs';
+import { makeWitnesses, makePrivateState } from './witnesses.mjs';
 const TRADES_FILE = process.argv.find((a, i) => process.argv[i - 1] === '--trades');
 const BATCH_IDX = Number(process.argv.find((a, i) => process.argv[i - 1] === '--batch') ?? 0);
 const hexToBytes = (h) => Uint8Array.from(Buffer.from(h, 'hex'));
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n & 0xff; a[1] = (n >> 8) & 0xff; return a; };
 const OFFSET = 100000n;
 
-const ps = {
-  strategyParams: b32(0xAB), strategyOpening: b32(0xCD), nextTrade: null,
-  provenTrades: [], provenPaths: [], portfolioWeights: [], portfolioOpening: b32(0xEF),
-};
-const w = (k) => ({ privateState }) => [privateState, privateState[k]];
-const contract = new Contract({
-  strategyParams: w('strategyParams'), strategyOpening: w('strategyOpening'),
-  nextTrade: w('nextTrade'), provenTrades: w('provenTrades'), provenPaths: w('provenPaths'),
-  portfolioWeights: w('portfolioWeights'), portfolioOpening: w('portfolioOpening'),
-});
+const ps = makePrivateState();
+const contract = new Contract(makeWitnesses());
 
 const addr = rt.sampleContractAddress();
 const ctor = contract.initialState({

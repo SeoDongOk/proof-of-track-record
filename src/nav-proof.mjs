@@ -3,14 +3,14 @@ import * as rt from '@midnight-ntwrk/compact-runtime';
 import { httpClientProvingProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { Contract } from '../build/track_record/contract/index.js';
 import { FileZkConfigProvider } from './zk-config.mjs';
+import { makeWitnesses, makePrivateState } from './witnesses.mjs';
 const PS = process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300';
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n & 0xff; return a; };
 const OFF = 10000n, NAV0 = 100000000n, ACTUAL = -400n, NAV1 = NAV0 * (OFF + ACTUAL) / OFF;
 const ps = { strategyParams:b32(1), strategyOpening:b32(2), nextTrade:null, provenTrades:[],
   provenPaths:[], portfolioWeights:[], portfolioOpening:b32(3),
   navOpenValue:NAV0, navOpenSalt:b32(10), navCloseValue:NAV1, navCloseSalt:b32(11) };
-const w = (k) => ({privateState}) => [privateState, privateState[k]];
-const contract = new Contract(Object.fromEntries(Object.keys(ps).map(k=>[k,w(k)])));
+const contract = new Contract(makeWitnesses());
 const ctor = contract.initialState({ initialPrivateState: ps,
   initialZswapLocalState: rt.emptyZswapLocalState(rt.encodeCoinPublicKey('00'.repeat(32))) });
 let ctx = { currentPrivateState: ctor.currentPrivateState,
