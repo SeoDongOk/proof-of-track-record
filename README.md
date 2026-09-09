@@ -119,6 +119,58 @@ If nobody demands proof, none of this matters. Where a screenshot suffices, this
 system has no job. **The value appears when the side putting up the money asks
 to verify.**
 
+## Prior art and how this differs
+
+**This idea is not novel.** Others are building it, and at least one is live.
+Being honest about that is more useful than claiming a first.
+
+| Project | Status | Data source | Cherry-pick prevention | Stack |
+|---|---|---|---|---|
+| **[Obscura](https://blog.horizen.io/trade-with-proof-not-trust-how-obscura-is-making-reputation-private-and-verifiable)** (Horizen) | **Live** | Exchange API keys (CEX), wallet signatures (DEX) | Commits to a hash of the full trade set for the period; time-bounded proofs | Horizen L3, custom ZK circuits, **AWS Nitro TEE** |
+| **[Proof of Alpha](https://minaprotocol.com/blog/proof-of-alpha)** (o1Labs / Mina) | In development | Binance read-only API | Not addressed — the user picks token pair and date range | Mina zkApp |
+| **[ZEROBASE](https://zerobase.website/docs/article/verifiable-scheme-for-hedge-fund-investment-strategies-based-on-zk-interval-proofs/)** | Research | — | — | ZK interval proofs over portfolio risk |
+| **This project** | Hackathon | Self-attested (broker signature is future work) | NAV delta binding + on-chain trade commitments | Midnight, Compact |
+
+Obscura in particular solves the harder half: it authenticates the data by
+pulling it from the exchange. This project does not — that limitation is stated
+plainly in [Trust model](#trust-model--what-this-stops-and-what-it-does-not).
+
+### What is actually different here
+
+**1. No trusted hardware.**
+Obscura processes trades inside an AWS Nitro enclave. A TEE is a trust
+assumption — you are trusting Amazon's hardware and its attestation chain, and
+TEEs have a long history of side-channel breaks. This project has no TEE: the
+guarantees come from on-chain commitments and the ZK circuit alone. The price is
+that data authenticity is unsolved rather than delegated.
+
+**2. Pre-commitment against data snooping.**
+Both Obscura and Proof of Alpha prove *past performance*. Neither prevents:
+
+> "I ran ten strategies for a year and I am showing you the one that won."
+
+That is a different failure from cherry-picking trades, and it is the one that
+actually burned this project's author. Committing the strategy hash *before*
+trading — circuit 1 here — makes it impossible to claim a strategy you did not
+pre-register. Hash-committing a pre-registration document is established practice
+in empirical research (OpenTimestamps and similar); the contribution here is
+binding it to the performance proof so both are checked together.
+
+**3. Privacy enforced by the type system.**
+Compact refuses to compile when a witness value can reach the ledger. That is a
+property of the Midnight toolchain, not of this project — but it is a property no
+other entry in the table has, and it caught two real leaks during development
+(see [The core idea](#the-core-idea--privacy-as-a-type-check-not-a-convention)).
+
+### Honest weaknesses
+
+- Obscura is a shipped product with real users; this is a hackathon submission.
+- Obscura and Proof of Alpha both authenticate data from the exchange. This does not.
+- Proof of Alpha has o1Labs behind it.
+
+The narrow claim this project can defend is: **a self-attested track record whose
+history cannot be rewritten, with no trusted hardware, on Midnight.**
+
 ## The core idea — privacy as a type check, not a convention
 
 Compact's information-flow type system is the backbone of this project.
