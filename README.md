@@ -314,13 +314,16 @@ docker run -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -
 심사 절차 그대로 **fresh clone** 에서 검증했다 (2026-09-09).
 
 ```
-git clone … && npm install        OK
-npm run build                     6 circuits, 산출물 28개
-npm run demo                      5/5 ✅  (증명 서버 불필요)
-npm run live                      ZK 증명 4508 bytes, 21.8s
+git clone … && npm install     OK
+npm run build                  9 circuits
+npm run demo                   5/5 ✅   (증명 서버 불필요)
+npm run nav                    체리피킹 거부 포함 5건 판정 ✅
+npm run live                   ZK 증명 4508 bytes ✅
+npm run deploy:local           온체인 배포, 블록 580 ✅ (Node 22)
 ```
 
-선행 조건은 Compact 툴체인 0.31.1 (`compact update 0.31`) 과, `live` 에 한해 Docker 증명 서버뿐이다.
+선행 조건은 Compact 툴체인 0.31.1 (`compact update 0.31`), `live` 에 한해
+Docker 증명 서버, `deploy:local` 에 한해 로컬 devnet + Node 22 뿐이다.
 
 ## 빌드 및 실행
 
