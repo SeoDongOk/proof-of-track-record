@@ -347,7 +347,45 @@ Docker 증명 서버, `deploy:local` 에 한해 로컬 devnet + Node 22 뿐이�
 ## 빌드 및 실행
 
 ```bash
-compact compile contracts/track_record.compact build/track_record
+npm install
+npm run build          # 회로 컴파일 (Compact 툴체인 0.31.1 필요)
+
+# 증명 서버 없이 — 회로 동작과 적대적 테스트만
+npm run demo           # 회로 1~4
+npm run nav            # 회로 5 (체리피킹 차단 실증)
+
+# 증명 서버 필요 — 실제 ZK 증명
+npm run proof-server   # Docker. 최초 1회 SRS 다운로드로 1~2분 걸린다
+npm run live           # 거래 로그 증명
+npm run nav:proof      # NAV 델타 증명
+
+# 온체인 배포 (로컬 devnet + Node 22 필요)
+npm run deploy:local
+```
+
+전체 스크립트:
+
+| 스크립트 | 하는 일 | 선행 조건 |
+|---|---|---|
+| `build` | 회로 컴파일 | Compact 0.31.1 |
+| `demo` / `nav` | 회로 실행 + 적대적 테스트 | 없음 |
+| `live` / `nav:proof` | 실제 ZK 증명 생성 | 증명 서버 |
+| `live:real` | 실제 포트폴리오로 증명 | 증명 서버 + `export` |
+| `export` | 페이퍼 트레이딩 → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
+| `deploy:local` | 로컬 devnet 온체인 배포 | devnet + **Node 22** |
+| `proof-server` | 증명 서버 기동 | Docker |
+| `wallet` / `deploy` | 공용 테스트넷용 (파우셋 필요) | — |
+
+선행 조건이 빠지면 스택트레이스 대신 무엇을 해야 하는지 알려준다.
+
+```
+$ npm run live                 # 증명 서버가 꺼져 있을 때
+✗ 증명 서버에 연결할 수 없습니다: http://127.0.0.1:6300
+  npm run proof-server
+
+$ node src/deploy-local.mjs    # Node 20 일 때
+✗ Node 22 이상이 필요합니다 (현재 20.17.0).
+  nvm use 22
 ```
 
 `build/` 아래에 `contract/`(TypeScript API), `zkir/`(ZK 중간표현),
