@@ -255,6 +255,7 @@ are rejected.
 - [x] Compact toolchain (**0.31.1**, matched to the live network; language_version 0.23, runtime 0.16.0)
 - [x] **Circuit 1** strategy pre-commitment — `commitStrategy` / `revealMatchesCommitment`
 - [x] **Circuit 6** strategy registry — `registerStrategy` / `provenanceOf` (exposes how many attempts were made)
+- [x] **Circuit 7** third-party attestation — `registerAttestor` / `submitAttestation` / `proveAttestedNav` (the attestor slot)
 - [x] **Circuit 2** trade Merkle commitment — `recordTrade`
 - [x] **Circuit 3** return threshold proof — `proveReturnAtLeast`
 - [x] **Circuit 4** risk limit proof — `commitPortfolio` / `proveMaxWeight`
@@ -343,18 +344,65 @@ Actual trades: 5 wins, 3 losses, sum -400bp   NAV 100,000,000 -> 96,000,000
 Reproduce with `npm run nav`. `npm run nav:proof` generates a real ZK proof
 (4508 bytes, 7.9s — lighter than circuit 3 since there are no Merkle paths).
 
-### The assumption that remains
+### Breaking self-attestation — the attestor slot
 
-| Stopped | Not stopped |
+Commitments only guarantee *"I did not change what I said."* A NAV invented from
+the start passes every later proof honestly.
+
+**This is not a gap that can be engineered away.** Proving an external fact
+("my exchange balance is X") from inside a chain requires something that witnessed
+it. Obscura uses a TEE plus exchange APIs; zkTLS uses a notary. Different names,
+same role. So rather than hide it, this project exposes it as an explicit slot.
+
+The design point is that **signature verification happens outside the circuit**:
+
+1. An attestor reads the balance from the exchange's TLS session and posts
+   `(accountId, navCommitment)` on-chain
+2. Verifying the attestor's signature is done by the chain and the verifier with
+   ordinary tooling — the circuit never touches it
+3. The circuit only proves *"my private NAV opens that commitment"*
+
+That works on Compact 0.31 today. In-circuit signature verification would need
+0.34's `secp256k1EcdsaVerify`, and this design removes the need for it.
+
+```
+Claim NAV with no attestation   -> rejected: no attestation for that account
+Attestor posts the real balance -> ledger stores only the commitment
+Prove with the real NAV         -> accepted, NAV stays private
+Inflate the NAV 3x              -> rejected: nav does not open the attested commitment
+Claim an unattested account     -> rejected
+```
+
+Reproduce with `npm run attest`; `npm run attest:proof` generates the real ZK
+proof (4508 bytes, 2.0s — the lightest circuit here).
+
+**The demo attestor is not trustworthy.** It does not look at a real exchange;
+it attests whatever NAV it is handed. It exists to show the wiring.
+`src/attestor.mjs` defines the adapter, and `zkTlsAttestor()` is the unimplemented
+slot where TLSNotary or Reclaim goes. **That integration is the main outstanding
+work.**
+
+Note that "the broker signs the balance" does not actually work: Binance's Ed25519
+scheme has the *client* signing requests, and the exchange does not sign its
+responses. This is why zkTLS — which needs no cooperation from the exchange — is
+the route.
+
+### What this moves, and what remains
+
+| Stopped | Remaining assumption |
 |---|---|
-| Lying about a committed value | Fabricating the NAV in the first place |
-| Computing returns with losses omitted | |
+| Lying about a committed value | **The attestor is honest** |
+| Computing returns with losses omitted | **Identity is not Sybil-resistant on its own** |
 | Lowering the opening balance after the fact | |
 | Changing the strategy after the fact | |
+| Hiding how many strategies were attempted | |
+| Inventing a NAV (with an attestor) | |
 
-To stop a wholly invented NAV you need a **broker signature**: the exchange signs
-fills and balances, the circuit verifies that signature, and the claim stops being
-self-attested.
+**On Sybil:** the strategy registry counts per trader identity, so a fresh
+identity resets the counter to zero. Binding `accountId` to a **KYC'd exchange
+account** is what gives that identity weight — ten identities then require ten
+KYC'd accounts, which is expensive and usually not permitted. Without that
+binding, an anonymous trader can still start over.
 
 ### What was attempted, and why it was deferred
 
@@ -574,8 +622,8 @@ Full script list:
 | Script | What it does | Prerequisites |
 |---|---|---|
 | `build` | compile circuits | Compact 0.31.1 |
-| `demo` / `nav` / `selection` | run circuits + adversarial tests | none |
-| `live` / `nav:proof` / `selection:proof` | generate real ZK proofs | proof server |
+| `demo` / `nav` / `selection` / `attest` | run circuits + adversarial tests | none |
+| `live` / `nav:proof` / `selection:proof` / `attest:proof` | generate real ZK proofs | proof server |
 | `live:real` | prove over the real portfolio | proof server + `export` |
 | `export` | paper trading → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
 | `deploy` | on-chain deployment (local/preview/preprod) | devnet or faucet + **Node 22** |

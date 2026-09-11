@@ -242,6 +242,7 @@ Exception: potential witness-value disclosure must be declared but is not:
 - [x] Compact 툴체인 (네트워크와 맞춘 **0.31.1**, language_version 0.23, runtime 0.16.0)
 - [x] **회로 1** 전략 사전 커밋 `commitStrategy` / `revealMatchesCommitment`
 - [x] **회로 6** 전략 레지스트리 `registerStrategy` / `provenanceOf` (시행 횟수를 공개)
+- [x] **회로 7** 제3자 증언 `registerAttestor` / `submitAttestation` / `proveAttestedNav` (공증인 슬롯)
 - [x] **회로 2** 거래 머클 커밋 `recordTrade`
 - [x] **회로 3** 수익률 임계값 증명 `proveReturnAtLeast`
 - [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
@@ -329,17 +330,61 @@ ZK 는 "계산이 정직했다"를 증명하지 **"입력이 전부다"를 증�
 `npm run nav` 로 재현. `npm run nav:proof` 는 실제 ZK 증명을 만든다
 (4508 bytes, 7.9s — 머클 경로가 없어 회로 3보다 가볍다).
 
-### 그래도 남는 신뢰 가정
+### 자기증명을 끊는 법 — 공증인 슬롯
 
-| 막는다 | 못 막는다 |
+커밋은 *"내가 말한 값을 안 바꿨다"* 만 보장한다. 처음부터 지어낸 NAV 는
+이후 모든 증명을 정직하게 통과한다.
+
+**이건 설계로 없앨 수 있는 한계가 아니다.** 체인 안에서 바깥 사실
+("내 거래소 잔고가 X 다")을 증명하려면 그걸 목격한 무언가가 반드시 필요하다.
+Obscura 는 TEE + 거래소 API 로, zkTLS 는 공증인으로 푼다. 이름만 다를 뿐
+같은 역할이다. 그래서 숨기지 않고 슬롯으로 드러낸다.
+
+설계의 요점은 **서명 검증을 회로 밖으로 뺀다**는 것이다.
+
+1. 공증인이 거래소 TLS 세션에서 잔고를 읽고 `(계좌ID, NAV커밋)` 을 온체인에 올린다
+2. 공증인 서명 검증은 체인과 검증자가 일반 도구로 한다 — 회로는 관여하지 않는다
+3. 회로는 *"내 비공개 NAV 가 그 커밋을 연다"* 만 증명한다
+
+덕분에 Compact 0.31 에서 오늘 동작한다. 회로 안에서 서명을 검증하려면
+0.34 의 `secp256k1EcdsaVerify` 가 필요한데, 이 설계는 그럴 필요를 없앤다.
+
+```
+공증 없이 NAV 주장      -> 거부: no attestation for that account
+공증인이 실제 잔고 증언  -> 원장에는 커밋만 오른다
+진짜 NAV 로 증명        -> 통과, NAV 는 비공개
+NAV 를 3배로 부풀림      -> 거부: nav does not open the attested commitment
+미증언 계좌로 주장      -> 거부
+```
+
+`npm run attest` 로 재현. `npm run attest:proof` 는 실제 ZK 증명을 만든다
+(4508 bytes, 2.0s — 여기서 가장 가벼운 회로).
+
+**데모 공증인은 신뢰 가치가 없다.** 실제 거래소를 보지 않고 주어진 NAV 를
+그대로 증언한다. 배선을 보여주기 위한 것이다. `src/attestor.mjs` 가 어댑터를
+정의하고, `zkTlsAttestor()` 가 TLSNotary/Reclaim 이 들어갈 미구현 슬롯이다.
+**그 연동이 남은 핵심 작업이다.**
+
+참고로 "브로커가 잔고에 서명" 은 실제로는 성립하지 않는다. 바이낸스의 Ed25519
+는 *클라이언트* 가 요청에 서명하는 방향이고 거래소는 응답에 서명하지 않는다.
+거래소 협조가 필요 없는 zkTLS 가 경로인 이유다.
+
+### 무엇이 옮겨가고 무엇이 남나
+
+| 막는다 | 남는 가정 |
 |---|---|
-| 커밋한 값에 대해 거짓말하기 | NAV 자체를 처음부터 조작하기 |
-| 손실 거래를 빼고 계산하기 | |
+| 커밋한 값에 대해 거짓말하기 | **공증인이 정직해야 한다** |
+| 손실 거래를 빼고 계산하기 | **신원 자체에는 Sybil 저항이 없다** |
 | 사후에 시작 잔고 낮추기 | |
 | 전략을 사후에 바꾸기 | |
+| 몇 개를 시도했는지 숨기기 | |
+| NAV 날조 (공증인이 있을 때) | |
 
-NAV 를 통째로 지어내는 것까지 막으려면 **브로커 서명**이 필요하다.
-체결·잔고를 거래소가 서명하고 회로가 그 서명을 검증하면 자기증명이 아니게 된다.
+**Sybil 에 관해:** 전략 레지스트리는 트레이더 신원별로 세므로, 신원을 새로
+만들면 카운터가 0 부터 시작한다. `accountId` 를 **KYC 된 거래소 계좌**에
+묶는 것이 그 신원에 무게를 준다 — 신원 10개를 만들려면 KYC 계좌 10개가
+필요하고, 비싸며 대개 허용되지 않는다. 그 연결이 없으면 익명 트레이더는
+여전히 처음부터 다시 시작할 수 있다.
 
 ### 시도했고, 왜 미뤘는지
 
@@ -545,8 +590,8 @@ MN_NETWORK=preview npm run deploy   # 공용 테스트넷 (파우셋으로 tNIGH
 | 스크립트 | 하는 일 | 선행 조건 |
 |---|---|---|
 | `build` | 회로 컴파일 | Compact 0.31.1 |
-| `demo` / `nav` / `selection` | 회로 실행 + 적대적 테스트 | 없음 |
-| `live` / `nav:proof` / `selection:proof` | 실제 ZK 증명 생성 | 증명 서버 |
+| `demo` / `nav` / `selection` / `attest` | 회로 실행 + 적대적 테스트 | 없음 |
+| `live` / `nav:proof` / `selection:proof` / `attest:proof` | 실제 ZK 증명 생성 | 증명 서버 |
 | `live:real` | 실제 포트폴리오로 증명 | 증명 서버 + `export` |
 | `export` | 페이퍼 트레이딩 → `trades.json` | `Algorithmic_Trading_YL` + yfinance |
 | `deploy` | 온체인 배포 (local/preview/preprod) | devnet 또는 파우셋 + **Node 22** |
