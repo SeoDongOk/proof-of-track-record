@@ -38,19 +38,26 @@ if (!appId || !appSecret) {
 }
 
 const { primusAttestor } = await import('./attestor.mjs');
-const { binanceSpot, publicTicker } = await import('./exchanges.mjs');
+const { binanceSpot, binanceFutures, publicTicker } = await import('./exchanges.mjs');
 
-let adapter;
-if (has('--binance')) {
-  const apiKey = process.env.BINANCE_API_KEY, apiSecret = process.env.BINANCE_API_SECRET;
+const binanceCreds = () => {
+  const apiKey = process.env.BINANCE_API_KEY;
+  const apiSecret = process.env.BINANCE_API_SECRET ?? process.env.BINANCE_SECRET_KEY;
   if (!apiKey || !apiSecret) {
     console.error(`\n${RED('✗ BINANCE_API_KEY / BINANCE_API_SECRET 이 없습니다.')}\n`);
     process.exit(1);
   }
-  adapter = binanceSpot({ apiKey, apiSecret });
+  return { apiKey, apiSecret };
+};
+
+let adapter;
+if (has('--futures')) {
+  adapter = binanceFutures({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') });
+} else if (has('--binance')) {
+  adapter = binanceSpot(binanceCreds());
 } else {
   adapter = publicTicker({ symbol: opt('--symbol', 'BTCUSDT') });
-  console.log(DIM('공개 시세로 진행합니다. 실계좌 잔고는 --binance.\n'));
+  console.log(DIM('공개 시세로 진행합니다. 실계좌 잔고는 --futures / --binance.\n'));
 }
 
 // ── 1) zkTLS 공증 ────────────────────────────────────────────────────────────

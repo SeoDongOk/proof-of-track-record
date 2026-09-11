@@ -18,7 +18,7 @@ import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { primusAttestor } from './attestor.mjs';
-import { binanceSpot, publicTicker, NAV_SCALE } from './exchanges.mjs';
+import { binanceSpot, binanceFutures, publicTicker, NAV_SCALE } from './exchanges.mjs';
 import { Contract, ledger } from '../build/attestation/contract/index.js';
 
 const argv = process.argv.slice(2);
@@ -49,22 +49,29 @@ ${DIM('  자격증명 없이 회로 동작만 보려면: npm run attest (데모 
 }
 
 // ── 어댑터 선택 ──────────────────────────────────────────────────────────────
-let adapter;
-if (has('--binance')) {
-  const apiKey = process.env.BINANCE_API_KEY, apiSecret = process.env.BINANCE_API_SECRET;
+const binanceCreds = () => {
+  const apiKey = process.env.BINANCE_API_KEY;
+  const apiSecret = process.env.BINANCE_API_SECRET ?? process.env.BINANCE_SECRET_KEY;
   if (!apiKey || !apiSecret) {
     console.error(`
 ${RED('✗ 바이낸스 자격증명이 없습니다.')}
 ${DIM('  .env 에 BINANCE_API_KEY / BINANCE_API_SECRET 를 넣으세요.')}
-${DIM('  읽기 전용(Enable Reading) 키면 충분합니다. 출금 권한은 절대 켜지 마세요.')}
+${DIM('  조회만 하므로 읽기 전용 키로 충분합니다. 출금 권한은 켜지 마세요.')}
 ${DIM('  거래소 계정 없이 파이프라인만 확인하려면 플래그 없이 실행하세요.')}
 `);
     process.exit(1);
   }
-  adapter = binanceSpot({ apiKey, apiSecret });
+  return { apiKey, apiSecret };
+};
+
+let adapter;
+if (has('--futures')) {
+  adapter = binanceFutures({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') });
+} else if (has('--binance')) {
+  adapter = binanceSpot(binanceCreds());
 } else {
   adapter = publicTicker({ symbol: opt('--symbol', 'BTCUSDT') });
-  console.log(DIM('공개 시세로 파이프라인을 확인합니다. 실제 잔고 증명은 --binance 를 쓰세요.\n'));
+  console.log(DIM('공개 시세로 파이프라인을 확인합니다. 실계좌 잔고는 --futures / --binance.\n'));
 }
 
 const algorithmType = opt('--mode', 'mpctls');

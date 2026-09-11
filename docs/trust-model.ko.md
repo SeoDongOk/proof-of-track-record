@@ -156,7 +156,32 @@ Primus 공증인 네트워크를 통해 실제 zkTLS 세션을 돌려 거래소 
 | 어댑터 | 필요한 것 | 증명하는 것 |
 |---|---|---|
 | `publicTicker` (기본) | 없음 | 파이프라인이 끝까지 돈다 |
-| `binanceSpot` (`--binance`) | 읽기 전용 API 키 | 실제 계좌 잔고 |
+| `binanceFutures` (`--futures`) | API 키 | USDs-M 선물 계좌의 NAV |
+| `binanceSpot` (`--binance`) | API 키 | 현물 잔고 |
+
+실제 선물 계좌로 돌린 결과:
+
+```
+[1] zkTLS 공증  (binance-futures, mpctls)
+    GET https://fapi.binance.com/fapi/v3/account?recvWindow=60000&timestamp=...&signature=...
+    증언 대상: $.totalMarginBalance
+[2] 공증인 서명 검증 통과  (5.7s)
+    읽어온 값: totalMarginBalance = 21.46679236
+    NAV(Uint<48>): 21466792
+[2b] 변조된 증언 -> 거부
+[4] 증언 제출  계좌 dc16576b458f...  (API 키의 sha256)
+    온체인: submitAttestation 블록 8204, proveAttestedNav 블록 8207
+[5] 증언된 NAV 로 ZK 증명 -> 통과
+[6] NAV 3배 부풀림 -> 거부
+```
+
+`totalMarginBalance` 는 지갑잔고 + 미실현손익이라 포지션을 들고 있는 중에도
+값이 맞다. `totalWalletBalance` 는 미실현손익이 빠지고, `availableBalance` 는
+증거금으로 묶인 금액이 빠진다.
+
+API 키는 `X-MBX-APIKEY` 헤더로 공증인 네트워크를 지나간다. 시크릿은 로컬에서
+쿼리에 서명할 뿐 나가지 않는다. 어댑터는 GET 하나만 보내므로 읽기 전용 키가
+맞는 선택이다.
 
 자격증명은 `.env` 에 넣는다(gitignore 됨). `.env.example` 참고. 거래소 API 키는
 체인에 가지 않는다. `accountId` 로는 `sha256(키)` 만 쓴다.

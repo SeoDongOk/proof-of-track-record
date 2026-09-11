@@ -80,4 +80,43 @@ export function publicTicker({ symbol = 'BTCUSDT' } = {}) {
   };
 }
 
-export const ADAPTERS = { 'binance-spot': binanceSpot, 'public-ticker': publicTicker };
+/**
+ * 바이낸스 USDⓈ-M 선물 계좌.
+ *
+ * GET /fapi/v3/account 의 totalMarginBalance 를 NAV 로 쓴다.
+ * 지갑잔고 + 미실현손익이라 계좌의 실제 순자산이다. 포지션을 들고 있는 동안에도
+ * 값이 맞으므로 트랙 레코드용 NAV 로 적합하다.
+ *   totalWalletBalance   — 미실현손익 제외. 포지션 보유 중이면 실제와 어긋난다
+ *   availableBalance     — 증거금으로 묶인 금액이 빠져 있다
+ *
+ * HMAC 서명은 우리가 만든다. 그건 '조회할 권한'일 뿐 '응답이 진짜'라는 보장이
+ * 아니다. 바이낸스는 요청에 서명할 뿐 응답에 서명하지 않는다. 응답의 진위는
+ * zkTLS 가 보증한다.
+ *
+ * ⚠️ apiKey 는 X-MBX-APIKEY 헤더로 공증인 네트워크를 지나간다.
+ *    apiSecret 은 로컬에서 서명에만 쓰이고 나가지 않는다.
+ *    가능하면 읽기 전용 키를 쓰는 편이 안전하다.
+ */
+export function binanceFutures({ apiKey, apiSecret, recvWindow = 60_000,
+                                 base = 'https://fapi.binance.com', field = 'totalMarginBalance' }) {
+  if (!apiKey || !apiSecret) throw new Error('binanceFutures: apiKey / apiSecret 이 필요하다');
+  const qs = `recvWindow=${recvWindow}&timestamp=${Date.now()}`;
+  const sig = createHmac('sha256', apiSecret).update(qs).digest('hex');
+  return {
+    name: 'binance-futures',
+    url: `${base}/fapi/v3/account?${qs}&signature=${sig}`,
+    method: 'GET',
+    header: { 'X-MBX-APIKEY': apiKey },
+    body: '',
+    keyName: field,
+    parsePath: `$.${field}`,
+    toNav: (v) => toScaledInt(v),
+    accountId: () => sha256(`binance-futures:${apiKey}`),
+  };
+}
+
+export const ADAPTERS = {
+  'binance-futures': binanceFutures,
+  'binance-spot': binanceSpot,
+  'public-ticker': publicTicker,
+};

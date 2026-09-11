@@ -166,7 +166,32 @@ Two adapters ship in `src/exchanges.mjs`:
 | Adapter | Needs | Proves |
 |---|---|---|
 | `publicTicker` (default) | nothing | that the pipeline runs end to end |
-| `binanceSpot` (`--binance`) | read-only API key | an actual account balance |
+| `binanceFutures` (`--futures`) | API key | the NAV of a USDs-M futures account |
+| `binanceSpot` (`--binance`) | API key | a spot balance |
+
+Run against a real futures account:
+
+```
+[1] zkTLS attestation  (binance-futures, mpctls)
+    GET https://fapi.binance.com/fapi/v3/account?recvWindow=60000&timestamp=...&signature=...
+    attesting: $.totalMarginBalance
+[2] attestor signature verified  (5.7s)
+    value read: totalMarginBalance = 21.46679236
+    NAV (Uint<48>): 21466792
+[2b] tampered attestation -> rejected
+[4] attestation submitted  account dc16576b458f...  (sha256 of the API key)
+    on-chain: submitAttestation block 8204, proveAttestedNav block 8207
+[5] ZK proof with the attested NAV -> accepted
+[6] NAV inflated 3x -> rejected
+```
+
+`totalMarginBalance` is wallet balance plus unrealised PnL, so it stays correct
+while positions are open - unlike `totalWalletBalance` (excludes unrealised PnL)
+or `availableBalance` (excludes margin locked in positions).
+
+The API key travels to the attestor network in the `X-MBX-APIKEY` header; the
+secret never leaves the machine (it only signs the query locally). A read-only
+key is the right choice here - the adapter issues one GET and nothing else.
 
 Credentials go in `.env` (gitignored) — see `.env.example`. The exchange API key
 never reaches the chain; only `sha256(key)` is used as `accountId`.
