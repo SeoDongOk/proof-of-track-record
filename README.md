@@ -61,8 +61,9 @@ ZK proves the **computation** was honest, not that the **inputs** were real.
 
 ## Status
 
-14 circuits across two contracts, real ZK proofs against proof server 8.1.0, and
-on-chain deployment to a local devnet — all verified from a fresh clone.
+14 circuits across two contracts, real ZK proofs against proof server 8.1.0,
+on-chain deployment to a local devnet, and a **real zkTLS attestation** through the
+Primus attestor network (`npm run attest:live`, 4.8s) — all verified end to end.
 
 | | |
 |---|---|

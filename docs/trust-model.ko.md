@@ -117,15 +117,28 @@ Primus 공증인 네트워크를 통해 실제 zkTLS 세션을 돌려 거래소 
 [1] zkTLS 공증 요청  (public-ticker:BTCUSDT, mpctls)
     GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
     증언 대상: $.price
-[2] 공증인 서명 검증 통과
-    읽어온 값: price = 64211.37
-    NAV(Uint<48>): 64211370000
-    공증인이 읽은 것이지 우리가 넣은 값이 아니다
-[3] 공증인 등록
-[4] 증언 제출 — 원장에는 커밋만, NAV 값은 없다
+
+[2] 공증인 서명 검증 통과  (4.8s)
+    읽어온 값: price = 77246.23000000
+    NAV(Uint<48>): 77246230000
+    공증인: 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6 (https://primuslabs.xyz)
+
+[2b] 증언 값을 변조하면 검증이 거부하는가
+    거부됨. 서명이 값에 묶여 있다.
+
+[3] 공증인 등록: 8d9572b08ced…
+[4] 증언 제출
+    계좌: bdf148e7ad11…  (API 키의 해시. 키는 체인에 없다)
+    커밋: 7aa9334a6aa9e873…
+    원장에 NAV 값 77246230000 은 없다
+
 [5] 증언된 NAV 로 ZK 증명  -> 통과
-[6] NAV 를 3배로 부풀림     -> 거부
+[6] NAV 를 3배로 부풀림     -> 거부: nav does not open the attested commitment
 ```
+
+증언에는 공증인 주소와 응답에 대한 ECDSA 서명이 들어 있다. 값의 숫자 하나만
+바꿔도 `verifyAttestation()` 이 `false` 를 돌려준다. **2b** 단계가 매 실행마다
+그 확인을 하므로, 검증이 형식적이지 않다는 것이 실행 결과로 남는다.
 
 **우리가 직접 거래소 API 를 부르는 것과 왜 다른가.** API 키로 잔고를 읽으면
 그건 *우리가 읽었다고 주장하는* 숫자다. 바이낸스는 요청에 서명하지 응답에

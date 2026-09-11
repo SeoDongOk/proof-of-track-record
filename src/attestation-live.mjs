@@ -94,7 +94,25 @@ const secs = ((Date.now() - t0) / 1000).toFixed(1);
 console.log(`\n[2] 공증인 서명 검증 통과  ${DIM(`(${secs}s)`)}`);
 console.log(`    읽어온 값: ${att.raw.keyName} = ${att.raw.value}`);
 console.log(`    NAV(Uint<48>): ${att.nav}  ${DIM(`(scale ${NAV_SCALE})`)}`);
+const attestors = att.attestation?.attestors ?? [];
+for (const a of attestors) console.log(`    공증인: ${a.attestorAddr} ${DIM(`(${a.url})`)}`);
 console.log(DIM(`    공증인이 읽은 것이지 우리가 넣은 값이 아니다.`));
+
+// 서명 검증이 형식적이지 않다는 확인. 값을 한 글자 바꾸면 거부되어야 한다.
+console.log(`\n[2b] 증언 값을 변조하면 검증이 거부하는가`);
+const tampered = JSON.parse(JSON.stringify(att.attestation));
+if (typeof tampered.data === 'string') tampered.data = tampered.data.replace(/[0-9]/, '9');
+else if (tampered.data && typeof tampered.data === 'object') {
+  const k = Object.keys(tampered.data)[0];
+  if (k) tampered.data[k] = '999999999';
+}
+let tamperOk;
+try { tamperOk = attestor.verify(tampered) === false; }
+catch { tamperOk = true; }               // throw 도 거부로 친다
+console.log(tamperOk
+  ? `    거부됨. 서명이 값에 묶여 있다.`
+  : `    ${RED('❌❌ 변조된 증언이 검증을 통과했다')}`);
+if (!tamperOk) process.exitCode = 1;
 
 // ── 3~5) 온체인 제출 + ZK 증명 ───────────────────────────────────────────────
 const attestWitnesses = () => ({

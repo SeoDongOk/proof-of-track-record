@@ -125,15 +125,29 @@ when the network moves.
 [1] zkTLS attestation requested   (public-ticker:BTCUSDT, mpctls)
     GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
     attesting: $.price
-[2] attestor signature verified
-    value read: price = 64211.37
-    NAV (Uint<48>): 64211370000
-    read by the attestor, not supplied by us
-[3] attestor registered
-[4] attestation submitted — the ledger holds the commitment, not the NAV
+
+[2] attestor signature verified   (4.8s)
+    value read: price = 77246.23000000
+    NAV (Uint<48>): 77246230000
+    attestor: 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6 (https://primuslabs.xyz)
+
+[2b] does verification reject a tampered attestation?
+    rejected. the signature is bound to the value.
+
+[3] attestor registered: 8d9572b08ced…
+[4] attestation submitted
+    account: bdf148e7ad11…  (hash of the API key; the key is not on chain)
+    commitment: 7aa9334a6aa9e873…
+    the NAV 77246230000 is NOT on the ledger
+
 [5] ZK proof with the attested NAV   -> accepted
-[6] NAV inflated 3x                  -> rejected
+[6] NAV inflated 3x                  -> rejected: nav does not open the attested commitment
 ```
+
+The attestation carries the attestor's address and an ECDSA signature over the
+response. Changing one digit of the value makes `verifyAttestation()` return
+`false` — step **2b** runs that check on every execution, so the verification is
+demonstrably not a no-op.
 
 **Why this is not the same as calling the exchange API ourselves.** Reading a
 balance with an API key produces a number *we claim we read*. Binance signs

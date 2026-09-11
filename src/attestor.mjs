@@ -128,6 +128,12 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
       };
     },
 
+    /** 증언을 독립적으로 재검증한다. 변조된 증언은 false. */
+    verify(attestation) {
+      if (!sdk) throw new Error('primusAttestor: attest() 를 먼저 호출해야 한다');
+      return sdk.verifyAttestation(attestation);
+    },
+
     async close() { if (sdk?.close) await sdk.close(); },
   };
 }
