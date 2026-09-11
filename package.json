@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "compact compile contracts/track_record.compact build/track_record",
+    "build": "compact compile contracts/track_record.compact build/track_record && compact compile contracts/attestation.compact build/attestation",
     "proof-server": "docker run -d --name ptr-proof-server -p 6300:6300 midnightntwrk/proof-server:8.1.0 midnight-proof-server -v",
     "demo": "node src/demo.mjs",
     "live": "node src/live-proof.mjs",
