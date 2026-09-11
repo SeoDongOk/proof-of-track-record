@@ -257,3 +257,36 @@ $ node src/deploy.mjs    # Node 20 일 때
 `build/` 아래에 `contract/`(TypeScript API), `zkir/`(ZK 중간표현),
 `keys/`(증명·검증 키)가 생성된다. 재생성 가능하므로 커밋하지 않는다.
 
+
+## 실제 포트폴리오로 증명하기
+
+데모는 샘플 거래 8건을 씁니다. 실제 데이터로도 돌아갑니다.
+[Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
+의 모의 거래 계좌(S&P 500 16종목, 2026-09-08 진입)를 그대로 연결했습니다.
+
+```bash
+npm run export       # ~/.paper_trading/state.json -> trades.json
+npm run live:real    # 배치 0, 1 실제 ZK 증명
+```
+
+> `export` 는 `paper_trading` 패키지와 yfinance 가 `PYTHONPATH` 에 있어야 합니다.
+> 그 저장소 없이 재현하려면 `npm run live` (내장 샘플)를 쓰면 됩니다 — 같은 회로,
+> 같은 증명 서버입니다.
+
+체리피킹을 배제하려고 포지션을 **티커 알파벳순**으로 정렬해 8건씩 자르고
+**두 배치 모두** 증명합니다.
+
+```
+batch 0 [COP,CRM,CVX,DE,FCX,GILD,JNJ,MRK]     실제 -356bp -> 주장 ">= -400bp"  4508B / 32.9s
+batch 1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  실제 -285bp -> 주장 ">= -300bp"  4508B / 31.9s
+
+거짓 주장 ">= 0bp" -> 회로가 거부 (claimed floor not met)
+```
+
+**두 배치 다 손실입니다.** 그게 핵심입니다. 수익을 자랑하는 도구가 아니라 주장이
+**참인지 확인하는** 도구입니다. 손실 난 포트폴리오도 "최소 -400bp" 는 증명할 수
+있고 "최소 0bp" 는 증명할 수 없습니다.
+
+주장값은 실제 합계를 50bp 단위로 내린 값입니다. 정확한 값(-356bp)은 witness 로만
+존재합니다.
+

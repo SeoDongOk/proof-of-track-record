@@ -267,3 +267,37 @@ Compilation writes `contract/` (TypeScript API), `zkir/` (ZK intermediate
 representation) and `keys/` (proving and verifying keys) under `build/`.
 These are regenerable and are not committed.
 
+
+## Proving over a real portfolio
+
+The demos use eight sample trades. It also runs on real data: the paper trading
+account from
+[Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
+(16 S&P 500 positions, entered 2026-09-08).
+
+```bash
+npm run export       # ~/.paper_trading/state.json -> trades.json
+npm run live:real    # real ZK proof for batch 0 and batch 1
+```
+
+> `export` needs the `paper_trading` package and yfinance on `PYTHONPATH`.
+> Without that repository use `npm run live` (bundled sample) — same circuits,
+> same proof server.
+
+To rule out cherry-picking, positions are sorted **alphabetically by ticker**, cut
+into batches of eight, and **both batches are proved**.
+
+```
+batch 0 [COP,CRM,CVX,DE,FCX,GILD,JNJ,MRK]     actual -356bp -> claim ">= -400bp"  4508B / 32.9s
+batch 1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  actual -285bp -> claim ">= -300bp"  4508B / 31.9s
+
+false claim ">= 0bp" -> circuit rejects (claimed floor not met)
+```
+
+**Both batches are losses.** That is the point. This is not a tool for showing off
+profits — it checks whether a claim is *true*. A losing portfolio can still prove
+"at least -400bp" and cannot prove "at least 0bp".
+
+The claimed figure is the actual sum rounded down to 50bp. The exact value
+(-356bp) exists only as a witness.
+
