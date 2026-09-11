@@ -76,14 +76,23 @@ const compiled = CompiledContract.make('track_record', Contract).pipe(
 // 공증 레지스트리는 별도 컨트랙트다. 설계상 공증인이 다른 주체이기도 하고,
 // 회로 14개를 한 배포 트랜잭션에 넣으면 검증키가 28KB 가 되어 블록 한도를
 // 넘는다(RpcError 1010). 11개/23KB 와 3개/4.8KB 로 나누면 둘 다 통과한다.
+// 키 이름은 초기 private state 및 attestation-*.mjs 와 반드시 일치해야 한다.
+// 배포 트랜잭션은 이 witness 들을 호출하지 않아 불일치가 드러나지 않는다.
+// proveAttestedNav 를 실제로 부를 때 undefined 로 터진다.
 const attestWitnesses = {
-  navValue: ({ privateState }) => [privateState, privateState.navOpenValue],
-  navSalt: ({ privateState }) => [privateState, privateState.navOpenSalt],
+  navValue: ({ privateState }) => [privateState, privateState.navValue],
+  navSalt: ({ privateState }) => [privateState, privateState.navSalt],
 };
 const compiledAttestation = CompiledContract.make('attestation', AttestationContract).pipe(
   CompiledContract.withWitnesses(attestWitnesses),
   CompiledContract.withCompiledFileAssets('build/attestation'),
 );
+
+// httpClientProofProvider(url, zkConfigProvider) — 두 번째 인자가 필수다.
+// 빠뜨리면 내부에서 예외를 삼키고 ZK IR 없이 요청이 나가, 증명서버가
+// "bad input" 400 을 준다. 배포는 통과하지만 회로 호출에서 터진다.
+const trackRecordZk = new NodeZkConfigProvider('build/track_record');
+const attestationZk = new NodeZkConfigProvider('build/attestation');
 
 const providers = {
   privateStateProvider: levelPrivateStateProvider({
@@ -92,15 +101,16 @@ const providers = {
     privateStoragePasswordProvider: async () => 'PtrLocalDevnet2026!',  // 16자+ / 대소문자·숫자·기호
   }),
   publicDataProvider: indexerPublicDataProvider(env.indexer, env.indexerWS, WebSocket),
-  zkConfigProvider: new NodeZkConfigProvider('build/track_record'),
-  proofProvider: httpClientProofProvider(env.proofServer),
+  zkConfigProvider: trackRecordZk,
+  proofProvider: httpClientProofProvider(env.proofServer, trackRecordZk),
   walletProvider,
   midnightProvider: walletProvider,
 };
 
-// 공증 컨트랙트는 zkConfig 경로가 다르다.
+// 공증 컨트랙트는 zkConfig 경로가 다르다. proofProvider 도 함께 바꿔야 한다.
 const attestProviders = { ...providers,
-  zkConfigProvider: new NodeZkConfigProvider('build/attestation') };
+  zkConfigProvider: attestationZk,
+  proofProvider: httpClientProofProvider(env.proofServer, attestationZk) };
 
 console.log('\n배포 트랜잭션 생성 중 (증명 포함, 수 분 소요)...');
 

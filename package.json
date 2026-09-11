@@ -23,7 +23,8 @@
     "attest": "node src/attestation-demo.mjs",
     "attest:proof": "node src/attestation-proof.mjs",
     "attest:live": "node src/attestation-live.mjs",
-    "attest:binance": "node src/attestation-live.mjs --binance"
+    "attest:binance": "node src/attestation-live.mjs --binance",
+    "attest:onchain": "node src/attest-onchain.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.16.0",
@@ -43,5 +44,8 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/testkit-js": "^4.1.1"
+  },
+  "overrides": {
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
   }
 }
