@@ -164,3 +164,48 @@ Primus 공증인 네트워크를 통해 실제 zkTLS 세션을 돌려 거래소 
 **여전히 남는 가정.** Primus 공증인 그룹이 정직해야 하고 TLS 가 깨지지 않아야
 한다. 트레이더 혼자를 믿는 것보다는 낫고 데모 공증인보다는 훨씬 낫지만,
 분산 공증인 그룹도 결국 신뢰 가정이다. [신뢰 모델](trust-model.ko.md)에 적어 둔다.
+
+## 온체인: 공증을 실제 트랜잭션으로
+
+`npm run attest:onchain` 은 같은 흐름을 체인까지 끌고 간다. 공증과 ZK 증명이
+로컬 시뮬레이션이 아니라 트랜잭션이 된다.
+
+```
+[1] zkTLS 공증   price = 77186.01000000  ->  NAV 77186010000  (4.8s)
+    공증인: 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6
+
+[3] attestation 컨트랙트 배포  c5dee88809b4830efd29cb09…  블록 5428  (20s)
+
+[4] 온체인 트랜잭션
+    registerAttestor   블록 5431  (19s)
+    submitAttestation  블록 5435  (24s)
+    proveAttestedNav   블록 5440  (29s)
+
+[5] 인디서에서 원장 되읽기
+    공증인      : 8d9572b08ced5bfc50a217da…
+    증언된 계좌 : 1
+    저장된 커밋 : 9bdddb0dadec916fe9266299…
+    로컬 커밋과 일치: 예
+    NAV 77186010000 은 원장에 없다 — 커밋만 있다
+```
+
+인디서로 독립 확인:
+
+```
+블록 5428  ContractDeploy   tx f3747445035f19494ff9…
+블록 5431  ContractCall     tx 0b7f0fbb25ac06f1fe36…
+블록 5435  ContractCall     tx 6b2395ad81b5a2debc37…
+블록 5440  ContractCall     tx a52102ccb82f6880dcb4…
+```
+
+컨트랙트는 설계상 공증인 1명, 계좌당 증언 1건만 받는다. 그래서 스크립트가
+원장을 먼저 읽고, 기존 컨트랙트가 이미 쓰였으면 새로 배포한다.
+
+**알아둘 만한 수수료 함정.** 회로 호출 트랜잭션은 비용이 작아 지갑이 수수료를
+0 으로 계산할 수 있다. 그러면 `dust_actions: Some(empty)` 를 붙이는데, 노드는
+이걸 비정규 형식으로 거부한다(`Malformed(NotNormalized)`). 클라이언트에는
+`RpcError 1010: Custom error: 117` 로만 올라와 원인이 드러나지 않는다.
+배포 트랜잭션은 쓰는 바이트가 많아 수수료가 양수라 이 문제를 비껴가므로,
+**배포는 되는데 호출만 실패하는** 형태로 보인다. 지갑에
+`additionalFeeOverhead` 를 0 보다 크게 주면 실제 `DustSpend` 가 만들어진다.
+`src/wallet.mjs` 참고.

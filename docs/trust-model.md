@@ -175,3 +175,48 @@ never reaches the chain; only `sha256(key)` is used as `accountId`.
 hold. That is weaker than trusting the trader alone, and stronger than the demo
 attestor, but it is not nothing — a decentralised attestor group is still a
 trust assumption. This is stated in [Trust model](trust-model.md).
+
+## On-chain: the attestation as a real transaction
+
+`npm run attest:onchain` takes the same flow all the way to the chain — the
+attestation and the ZK proof become transactions, not local simulations.
+
+```
+[1] zkTLS attestation   price = 77186.01000000  ->  NAV 77186010000  (4.8s)
+    attestor: 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6
+
+[3] attestation contract deployed  c5dee88809b4830efd29cb09…  block 5428  (20s)
+
+[4] on-chain transactions
+    registerAttestor   block 5431  (19s)
+    submitAttestation  block 5435  (24s)
+    proveAttestedNav   block 5440  (29s)
+
+[5] ledger read back through the indexer
+    attestor          : 8d9572b08ced5bfc50a217da…
+    accounts attested : 1
+    stored commitment : 9bdddb0dadec916fe9266299…
+    matches local     : yes
+    the NAV 77186010000 is NOT on the ledger — only the commitment
+```
+
+Confirmed independently through the indexer:
+
+```
+block 5428  ContractDeploy   tx f3747445035f19494ff9…
+block 5431  ContractCall     tx 0b7f0fbb25ac06f1fe36…
+block 5435  ContractCall     tx 6b2395ad81b5a2debc37…
+block 5440  ContractCall     tx a52102ccb82f6880dcb4…
+```
+
+The contract accepts one attestor and one attestation per account by design, so
+the script reads the ledger first and deploys a fresh contract when the stored
+one is already spoken for.
+
+**A fee quirk worth knowing.** Circuit-call transactions are cheap enough that the
+wallet can compute a zero fee, and it then emits `dust_actions: Some(empty)`,
+which the node rejects as non-canonical (`Malformed(NotNormalized)`) — surfacing
+only as `RpcError 1010: Custom error: 117`. Deploy transactions write more bytes,
+so their fee is positive and they are unaffected; calls fail while deploys
+succeed. Setting a non-zero `additionalFeeOverhead` on the wallet forces a real
+`DustSpend`. See `src/wallet.mjs`.

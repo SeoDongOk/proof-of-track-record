@@ -22,8 +22,9 @@ requireNode(22);
 const { default: pino } = await import('pino');
 const { WebSocket } = await import('ws');
 const tk = await import('@midnight-ntwrk/testkit-js');
-const { LocalTestConfiguration, MidnightWalletProvider,
+const { LocalTestConfiguration,
         PreviewTestEnvironment, PreprodTestEnvironment } = tk;
+const { buildWallet } = await import('./wallet.mjs');
 const { setNetworkId } = await import('@midnight-ntwrk/midnight-js-network-id');
 const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 const { CompiledContract } = await import('@midnight-ntwrk/midnight-js-protocol/compact-js');
@@ -60,7 +61,10 @@ console.log(`  indexer ${env.indexer}`);
 console.log(`  node    ${env.node}`);
 
 const logger = pino({ level: 'warn' });
-const walletProvider = await MidnightWalletProvider.build(logger, env, SEED);
+// 수수료 오버헤드가 필요한 이유는 src/wallet.mjs 주석 참고.
+// 배포만 할 때는 없어도 되지만, 같은 지갑으로 회로를 호출하면 필요하다.
+const walletProvider = await buildWallet(logger, env, SEED,
+  BigInt(process.env.PTR_FEE_OVERHEAD ?? '1000000'));
 await walletProvider.start(true);          // 자금이 보일 때까지 대기
 console.log('지갑 동기화 완료');
 console.log('  coinPublicKey:', walletProvider.getCoinPublicKey().slice(0, 40) + '…');

@@ -71,8 +71,9 @@ for (const a of att.attestation?.attestors ?? []) console.log(`    공증인: ${
 // ── 체인 연결 ────────────────────────────────────────────────────────────────
 const { default: pino } = await import('pino');
 const { WebSocket } = await import('ws');
-const { LocalTestConfiguration, MidnightWalletProvider,
+const { LocalTestConfiguration,
         PreviewTestEnvironment, PreprodTestEnvironment } = await import('@midnight-ntwrk/testkit-js');
+const { buildWallet } = await import('./wallet.mjs');
 const { setNetworkId } = await import('@midnight-ntwrk/midnight-js-network-id');
 const { deployContract, findDeployedContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 const { CompiledContract } = await import('@midnight-ntwrk/midnight-js-protocol/compact-js');
@@ -93,9 +94,11 @@ const env = NET === 'preview' ? new PreviewTestEnvironment().getEnvironmentConfi
                                           proofServer: process.env.MN_PROOF_PORT ?? '6300' });
 setNetworkId(env.networkId);
 
-const walletProvider = await MidnightWalletProvider.build(
+// 수수료 오버헤드가 필요한 이유는 src/wallet.mjs 주석 참고.
+const walletProvider = await buildWallet(
   pino({ level: 'warn' }), env,
-  process.env.PTR_SEED ?? '0000000000000000000000000000000000000000000000000000000000000002');
+  process.env.PTR_SEED ?? '0000000000000000000000000000000000000000000000000000000000000002',
+  BigInt(process.env.PTR_FEE_OVERHEAD ?? '1000000'));
 await walletProvider.start(true);
 console.log(`\n[2] 지갑 동기화  ${DIM(`(${NET}, ${env.networkId})`)}`);
 
@@ -131,25 +134,47 @@ const providers = {
 const initialPrivateState = { navValue: att.nav, navSalt: att.salt };
 
 // ── 3) 컨트랙트 확보 ─────────────────────────────────────────────────────────
-// 기존 배포를 재사용하되, 주소가 죽었으면(devnet 재시작 등) 새로 배포한다.
+// 컨트랙트는 공증인을 1회만, 계좌당 증언도 1회만 받는다(의도된 설계).
+// 그래서 기존 배포를 재사용하되, 이 계좌가 이미 증언되어 있으면 새로 배포한다.
 const RECORD = `deployed-attest-${NET}.json`;
 let instance = null, address = null;
 
+const eq = (a, b) => a && b && Buffer.compare(Buffer.from(a), Buffer.from(b)) === 0;
+const usable = async (addr) => {
+  try {
+    const st = await providers.publicDataProvider.queryContractState(addr);
+    if (!st) return null;
+    const L = ledger(st.data);
+    return {
+      registered: L.attestorRegistered,
+      // 다른 공증인이 등록된 컨트랙트는 쓸 수 없다. 우리 증언이 아니게 된다.
+      sameAttestor: !L.attestorRegistered || eq(L.attestorId, attestor.id()),
+      attested: L.attestations.member(att.accountId),
+    };
+  } catch { return null; }
+};
+
 if (existsSync(RECORD)) {
   const prev = JSON.parse(readFileSync(RECORD, 'utf8'));
-  try {
+  const info = await usable(prev.contractAddress);
+  if (info && !info.attested && info.sameAttestor) {
     instance = await findDeployedContract(providers, {
       compiledContract: compiled, contractAddress: prev.contractAddress,
       privateStateId: PSID, initialPrivateState,
     });
     address = prev.contractAddress;
     console.log(`[3] 기존 배포 재사용  ${DIM(address.slice(0, 24) + '…')}`);
-  } catch (e) {
-    console.log(DIM(`[3] 기존 주소를 찾지 못해 새로 배포합니다 (${e.message.split('\n')[0].slice(0, 60)})`));
+  } else if (info && !info.sameAttestor) {
+    console.log(DIM(`[3] 기존 컨트랙트에 다른 공증인이 등록되어 있어 새로 배포합니다.`));
+  } else if (info?.attested) {
+    console.log(DIM(`[3] 이 계좌는 기존 컨트랙트에 이미 증언되어 있어 새로 배포합니다.`));
+  } else {
+    console.log(DIM(`[3] 기존 주소를 인디서에서 찾지 못해 새로 배포합니다.`));
   }
 }
 if (!instance) {
-  console.log('[3] attestation 컨트랙트 배포 중 (증명 포함, 수 분)...');
+  console.log('[3] attestation 컨트랙트 배포 중 (증명 포함, 수십 초)...');
+  const t = Date.now();
   const d = await deployContract(providers, {
     compiledContract: compiled, privateStateId: PSID, initialPrivateState,
   });
@@ -158,10 +183,10 @@ if (!instance) {
   writeFileSync(RECORD, JSON.stringify({ network: NET, contractAddress: address,
     blockHeight: d.deployTxData.public.blockHeight ?? null,
     deployedAt: new Date().toISOString() }, null, 2));
-  console.log(`    배포 완료  ${address.slice(0, 24)}…  블록 ${d.deployTxData.public.blockHeight ?? '?'}`);
+  console.log(`    배포 완료  ${address.slice(0, 24)}…  블록 ${d.deployTxData.public.blockHeight ?? '?'}  ${DIM(`${((Date.now()-t)/1000).toFixed(0)}s`)}`);
 }
 
-// ── 4) 트랜잭션 3건 ──────────────────────────────────────────────────────────
+// ── 4) 트랜잭션 ──────────────────────────────────────────────────────────────
 const txInfo = (r) => {
   const p = r?.public ?? r?.txData?.public ?? {};
   return { tx: p.txId ?? p.txHash ?? '(n/a)', block: p.blockHeight ?? '?' };
@@ -176,7 +201,12 @@ const send = async (label, fn) => {
 };
 
 console.log(`\n[4] 온체인 트랜잭션`);
-await send('registerAttestor ', () => instance.callTx.registerAttestor(attestor.id()));
+const pre = ledger((await providers.publicDataProvider.queryContractState(address)).data);
+if (!pre.attestorRegistered) {
+  await send('registerAttestor ', () => instance.callTx.registerAttestor(attestor.id()));
+} else {
+  console.log(`    registerAttestor  … ${DIM('이미 등록됨, 건너뜀')}`);
+}
 await send('submitAttestation', () => instance.callTx.submitAttestation(att.accountId, att.navCommitment));
 await send('proveAttestedNav ', () => instance.callTx.proveAttestedNav(att.accountId));
 

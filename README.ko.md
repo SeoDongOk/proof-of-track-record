@@ -30,6 +30,7 @@ npm run proof-server             # Docker, 첫 실행 1-2분
 npm run live                     # 실제 ZK 증명, 4508 바이트
 
 npm run attest:live              # 실제 zkTLS 세션 (Primus 자격증명 필요)
+npm run attest:onchain           # 그걸 온체인 제출까지 (로컬 devnet, Node 22)
 ```
 
 ## 무엇을 증명하나

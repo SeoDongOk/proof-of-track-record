@@ -31,6 +31,7 @@ npm run proof-server             # Docker, 1-2 min on first run
 npm run live                     # real ZK proof, 4508 bytes
 
 npm run attest:live              # real zkTLS session (needs Primus credentials)
+npm run attest:onchain           # ...and submit it on-chain (local devnet, Node 22)
 ```
 
 ## What it proves
