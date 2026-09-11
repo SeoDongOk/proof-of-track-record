@@ -255,7 +255,7 @@ are rejected.
 - [x] Compact toolchain (**0.31.1**, matched to the live network; language_version 0.23, runtime 0.16.0)
 - [x] **Circuit 1** strategy pre-commitment — `commitStrategy` / `revealMatchesCommitment`
 - [x] **Circuit 6** strategy registry — `registerStrategy` / `provenanceOf` (exposes how many attempts were made)
-- [x] **Circuit 7** third-party attestation — `registerAttestor` / `submitAttestation` / `proveAttestedNav` (the attestor slot)
+- [x] **Circuit 7** third-party attestation — `registerAttestor` / `submitAttestation` / `proveAttestedNav` (the attestor slot, deployed as a separate contract)
 - [x] **Circuit 2** trade Merkle commitment — `recordTrade`
 - [x] **Circuit 3** return threshold proof — `proveReturnAtLeast`
 - [x] **Circuit 4** risk limit proof — `commitPortfolio` / `proveMaxWeight`
@@ -506,11 +506,19 @@ A reviewer can reproduce real proofs with `npm run live` and no wallet setup.
 
 The contract deploys to a local devnet.
 
+Two contracts are deployed.
+
 ```
-contract address: 7a3eff6c1c374d715a839c4ec01848f6b465c009218a4b3b4aa6005aece088b9
-transaction     : 00cc52e62b94f916749a5fa19edc92b387ac3381cf54eb4ebb292354e3e948d23a
-block           : 319          deployment took 23s
+track_record  86b49d3d59b10ee06208def05cf8753f5e4f854df03c7acd8481860f4d2368b5   block 57  (21s)
+attestation   28fbb93db0f685dd2ad33177097508a2f12349d3eb75485487739b86b88c965d   block 60  (19s)
 ```
+
+**Why two contracts.** The attestation registry is a separate deployment for two
+reasons. By design the attestor is a different party from the trader, with
+different authority and lifetime. Practically, putting all 14 circuits in one
+deployment makes the verifier keys total 28 KB, which exceeds the block limit
+(`RpcError 1010: Transaction would exhaust the block limits`). Split into
+11 circuits / 23 KB and 3 circuits / 4.8 KB, both go through.
 
 Confirmed through the indexer as a `ContractDeploy`:
 

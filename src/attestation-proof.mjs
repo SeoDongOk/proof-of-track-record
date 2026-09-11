@@ -1,17 +1,21 @@
 /** proveAttestedNav 회로로 실제 ZK 증명 생성 */
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { httpClientProvingProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { Contract } from '../build/track_record/contract/index.js';
+import { Contract } from '../build/attestation/contract/index.js';
 import { FileZkConfigProvider } from './zk-config.mjs';
-import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+// 공증 컨트랙트는 witness 2개만 쓴다 (track_record 와 독립)
+const attestWitnesses = () => ({
+  navValue: ({ privateState }) => [privateState, privateState.navValue],
+  navSalt: ({ privateState }) => [privateState, privateState.navSalt],
+});
 import { requireProofServer } from './preflight.mjs';
 const PS = process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300';
 await requireProofServer(PS);
 const b32=(n)=>{const a=new Uint8Array(32);a[0]=n&0xff;return a;};
 const u48 = new rt.CompactTypeUnsignedInteger((1n<<48n)-1n, 6);
 const ATTESTOR=b32(0xC0), ACCOUNT=b32(0xE1), NAV=96_000_000n, SALT=b32(0x77);
-const contract = new Contract(makeWitnesses());
-const ctor = contract.initialState({ initialPrivateState: makePrivateState(),
+const contract = new Contract(attestWitnesses());
+const ctor = contract.initialState({ initialPrivateState: { navValue: 0n, navSalt: new Uint8Array(32) },
   initialZswapLocalState: rt.emptyZswapLocalState(rt.encodeCoinPublicKey('00'.repeat(32))) });
 let ctx = { currentPrivateState: ctor.currentPrivateState,
   currentZswapLocalState: ctor.currentZswapLocalState,
@@ -19,11 +23,11 @@ let ctx = { currentPrivateState: ctor.currentPrivateState,
   costModel: rt.CostModel.initialCostModel() };
 ctx = contract.impureCircuits.registerAttestor(ctx, ATTESTOR).context;
 ctx = contract.impureCircuits.submitAttestation(ctx, ACCOUNT, rt.persistentCommit(u48, NAV, SALT)).context;
-Object.assign(ctx.currentPrivateState,{navOpenValue:NAV, navOpenSalt:SALT});
+Object.assign(ctx.currentPrivateState,{navValue:NAV, navSalt:SALT});
 const C='proveAttestedNav';
 const pd = contract.impureCircuits[C](ctx, ACCOUNT).proofData;
 const pre = rt.proofDataIntoSerializedPreimage(pd.input, pd.output, pd.publicTranscript, pd.privateTranscriptOutputs, C);
-const zk = new FileZkConfigProvider(new URL('../build/track_record/', import.meta.url).pathname);
+const zk = new FileZkConfigProvider(new URL('../build/attestation/', import.meta.url).pathname);
 const prover = httpClientProvingProvider(PS, zk, { timeout: 300000 });
 await prover.check(pre, C);
 const t=Date.now(); const proof=await prover.prove(pre, C);

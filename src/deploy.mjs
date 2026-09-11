@@ -32,6 +32,7 @@ const { httpClientProofProvider } = await import('@midnight-ntwrk/midnight-js-ht
 const { indexerPublicDataProvider } = await import('@midnight-ntwrk/midnight-js-indexer-public-data-provider');
 const { levelPrivateStateProvider } = await import('@midnight-ntwrk/midnight-js-level-private-state-provider');
 const { Contract } = await import('../build/track_record/contract/index.js');
+const { Contract: AttestationContract } = await import('../build/attestation/contract/index.js');
 const { makeWitnesses, makePrivateState } = await import('./witnesses.mjs');
 const { requireLocalDevnet, requireProofServer } = await import('./preflight.mjs');
 
@@ -72,6 +73,18 @@ const compiled = CompiledContract.make('track_record', Contract).pipe(
   CompiledContract.withCompiledFileAssets('build/track_record'),
 );
 
+// 공증 레지스트리는 별도 컨트랙트다. 설계상 공증인이 다른 주체이기도 하고,
+// 회로 14개를 한 배포 트랜잭션에 넣으면 검증키가 28KB 가 되어 블록 한도를
+// 넘는다(RpcError 1010). 11개/23KB 와 3개/4.8KB 로 나누면 둘 다 통과한다.
+const attestWitnesses = {
+  navValue: ({ privateState }) => [privateState, privateState.navOpenValue],
+  navSalt: ({ privateState }) => [privateState, privateState.navOpenSalt],
+};
+const compiledAttestation = CompiledContract.make('attestation', AttestationContract).pipe(
+  CompiledContract.withWitnesses(attestWitnesses),
+  CompiledContract.withCompiledFileAssets('build/attestation'),
+);
+
 const providers = {
   privateStateProvider: levelPrivateStateProvider({
     privateStateStoreName: 'ptr-private-state',
@@ -85,23 +98,35 @@ const providers = {
   midnightProvider: walletProvider,
 };
 
+// 공증 컨트랙트는 zkConfig 경로가 다르다.
+const attestProviders = { ...providers,
+  zkConfigProvider: new NodeZkConfigProvider('build/attestation') };
+
 console.log('\n배포 트랜잭션 생성 중 (증명 포함, 수 분 소요)...');
-const t0 = Date.now();
-const deployed = await deployContract(providers, {
-  compiledContract: compiled,
-  privateStateId: 'ptr',
-  initialPrivateState: makePrivateState(),
-});
-const pub = deployed.deployTxData.public;
-console.log(`\n✅ 배포 완료 (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
-console.log(`   컨트랙트 주소: ${pub.contractAddress}`);
-console.log(`   트랜잭션     : ${pub.txId ?? pub.txHash ?? '(n/a)'}`);
-console.log(`   블록         : ${pub.blockHeight ?? '(n/a)'}`);
+
+const deployOne = async (label, cc, privateStateId, initialPrivateState, prov = providers) => {
+  const t0 = Date.now();
+  const d = await deployContract(prov, {
+    compiledContract: cc, privateStateId, initialPrivateState,
+  });
+  const pub = d.deployTxData.public;
+  console.log(`\n✅ ${label} 배포 완료 (${((Date.now() - t0) / 1000).toFixed(0)}s)`);
+  console.log(`   주소   : ${pub.contractAddress}`);
+  console.log(`   블록   : ${pub.blockHeight ?? '(n/a)'}`);
+  return { contractAddress: pub.contractAddress,
+           txId: pub.txId ?? pub.txHash ?? null,
+           blockHeight: pub.blockHeight ?? null };
+};
+
+const trackRecord = await deployOne('track_record', compiled, 'ptr', makePrivateState());
+const attestation = await deployOne('attestation', compiledAttestation, 'ptr-attest',
+  { navValue: 0n, navSalt: new Uint8Array(32) }, attestProviders);
+
 writeFileSync(`deployed-${NET}.json`, JSON.stringify({
-  network: NET, networkId: env.networkId, contractAddress: pub.contractAddress,
-  txId: pub.txId ?? pub.txHash ?? null, blockHeight: pub.blockHeight ?? null,
+  network: NET, networkId: env.networkId,
+  trackRecord, attestation,
   deployedAt: new Date().toISOString(),
 }, null, 2));
-console.log(`   기록         : deployed-${NET}.json`);
+console.log(`\n   기록   : deployed-${NET}.json`);
 await walletProvider.stop();
 process.exit(0);

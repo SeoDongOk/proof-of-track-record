@@ -1,0 +1,87 @@
+pragma language_version 0.23;
+import CompactStandardLibrary;
+
+// ============================================================================
+// Attestation Registry — 제3자 증언
+//
+// track_record.compact 와 **별도 컨트랙트**로 배포한다. 두 가지 이유다.
+//
+//  1. 설계상 공증인은 트레이더와 다른 주체다. 권한도 수명도 다르므로
+//     같은 컨트랙트에 둘 이유가 없다.
+//  2. 실무적으로 회로 14개를 한 배포 트랜잭션에 넣으면 검증키가 28KB 가 되어
+//     블록 한도를 넘는다 (RpcError 1010: Transaction would exhaust the block
+//     limits). 11개/23KB 는 통과한다.
+//
+// 트레이더 쪽 컨트랙트는 이 레지스트리의 주소를 참조해 증언을 읽는다.
+// ============================================================================
+
+// 회로 5(NAV 델타)까지 와도 마지막 가정이 남는다. NAV 를 처음부터 지어내면
+// 커밋은 "내가 말한 값을 안 바꿨다" 만 보장할 뿐이다.
+//
+// 블록체인 안에서 바깥 사실("내 거래소 잔고가 X 다")을 증명하려면 그걸
+// 목격한 무언가가 반드시 필요하다. 없앨 수 있는 한계가 아니다.
+// Obscura 는 TEE+API 로, zkTLS(TLSNotary/Reclaim)는 공증인으로 푼다.
+// 이름만 다를 뿐 전부 공증인이다. 그래서 숨기지 않고 슬롯으로 드러낸다.
+//
+// 설계의 요점: **서명 검증을 회로 밖으로 뺀다.**
+//   1. 공증인이 거래소 TLS 세션에서 잔고를 읽고
+//      (계좌ID, NAV커밋) 에 서명해 온체인에 올린다
+//   2. 서명 검증은 체인/검증자가 일반 도구로 한다 — 회로가 할 필요가 없다
+//   3. 회로는 "내 비공개 NAV 가 그 커밋을 연다" 만 증명한다
+//
+// 덕분에 Compact 0.31 에서 오늘 동작한다. 회로 안에서 서명을 검증하려면
+// 0.34 의 secp256k1EcdsaVerify 가 필요하지만, 그럴 이유가 없다.
+
+/** 증명하려는 NAV (비공개) */
+witness navValue(): Uint<48>;
+/** 커밋 개봉 난수 (비공개) */
+witness navSalt(): Bytes<32>;
+
+/** 공증인 식별자 (공개). 배포 시 등록하고 이후 바꾸지 않는다. */
+export ledger attestorId: Bytes<32>;
+export ledger attestorRegistered: Boolean;
+
+/** 거래소 계좌ID -> 공증된 NAV 커밋 */
+export ledger attestations: Map<Bytes<32>, Bytes<32>>;
+
+/** 공증인이 증언한 계좌 수 (공개) */
+export ledger attestationCount: Counter;
+
+/** 공증인을 등록한다. */
+export circuit registerAttestor(id: Bytes<32>): [] {
+  assert(!attestorRegistered, "attestor already registered");
+  attestorId.write(disclose(id));
+  attestorRegistered.write(true);
+}
+
+/**
+ * 공증인이 증언을 올린다.
+ *
+ * 여기 들어오는 커밋은 공증인이 만든 것이다. 트레이더가 아니다.
+ * 서명 자체는 이 트랜잭션을 올린 주체가 공증인인지로 확인한다
+ * (실전에서는 공증인만 이 회로를 호출할 수 있게 권한을 건다).
+ *
+ * accountId 는 거래소 계좌 식별자의 해시다. 이게 Sybil 대응의 핵심이다 —
+ * 신원을 지갑이 아니라 KYC 된 거래소 계좌에 묶으면, 신원 10개를 만들려면
+ * KYC 계좌 10개가 필요하다.
+ */
+export circuit submitAttestation(accountId: Bytes<32>, navCommitment: Bytes<32>): [] {
+  assert(attestorRegistered, "register an attestor first");
+  assert(!attestations.member(disclose(accountId)), "account already attested");
+  attestations.insert(disclose(accountId), disclose(navCommitment));
+  attestationCount.increment(1);
+}
+
+/**
+ * "내 비공개 NAV 가 공증인이 올린 커밋을 연다"를 증명한다.
+ *
+ * 공증이 없으면 증명 자체가 불가능하다. 트레이더가 NAV 를 지어내도
+ * 공증된 커밋과 맞지 않으므로 회로가 멈춘다.
+ * NAV 값 자체는 끝까지 공개되지 않는다.
+ */
+export circuit proveAttestedNav(accountId: Bytes<32>): [] {
+  assert(attestations.member(disclose(accountId)), "no attestation for that account");
+  const commitment = persistentCommit<Uint<48>>(navValue(), navSalt());
+  assert(attestations.lookup(disclose(accountId)) == disclose(commitment),
+         "nav does not open the attested commitment");
+}

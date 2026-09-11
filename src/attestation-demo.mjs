@@ -6,15 +6,19 @@
  *    zkTLS 공증인(TLSNotary / Reclaim)이 들어간다. 그게 남은 작업이다.
  */
 import * as rt from '@midnight-ntwrk/compact-runtime';
-import { Contract, ledger } from '../build/track_record/contract/index.js';
-import { makeWitnesses, makePrivateState } from './witnesses.mjs';
+import { Contract, ledger } from '../build/attestation/contract/index.js';
+// 공증 컨트랙트는 witness 2개만 쓴다 (track_record 와 독립)
+const attestWitnesses = () => ({
+  navValue: ({ privateState }) => [privateState, privateState.navValue],
+  navSalt: ({ privateState }) => [privateState, privateState.navSalt],
+});
 
 const b32 = (n) => { const a = new Uint8Array(32); a[0] = n & 0xff; a[1] = (n >> 8) & 0xff; return a; };
 const u48 = new rt.CompactTypeUnsignedInteger((1n << 48n) - 1n, 6);
 
-const contract = new Contract(makeWitnesses());
+const contract = new Contract(attestWitnesses());
 const ctor = contract.initialState({
-  initialPrivateState: makePrivateState(),
+  initialPrivateState: { navValue: 0n, navSalt: new Uint8Array(32) },
   initialZswapLocalState: rt.emptyZswapLocalState(rt.encodeCoinPublicKey('00'.repeat(32))),
 });
 let ctx = {
@@ -39,7 +43,7 @@ console.log(`공증인 등록: ${Buffer.from(L().attestorId).toString('hex').sli
 
 // ── 공증 전: 아무 NAV 나 주장할 수 있는가? ───────────────────────────────────
 console.log('\n[1] 공증 없이 NAV 를 주장');
-Object.assign(ctx.currentPrivateState, { navOpenValue: REAL_NAV, navOpenSalt: SALT });
+Object.assign(ctx.currentPrivateState, { navValue: REAL_NAV, navSalt: SALT });
 try {
   contract.impureCircuits.proveAttestedNav(ctx, ACCOUNT);
   console.log('    ❌❌ 공증 없이 통과됨');
@@ -67,7 +71,7 @@ try {
 
 // ── 날조 시도 ────────────────────────────────────────────────────────────────
 console.log('\n[3] NAV 를 부풀려 주장 (D 공격)');
-ctx.currentPrivateState.navOpenValue = REAL_NAV * 3n;
+ctx.currentPrivateState.navValue = REAL_NAV * 3n;
 try {
   contract.impureCircuits.proveAttestedNav(ctx, ACCOUNT);
   console.log('    ❌❌ 날조된 NAV 가 통과됨');
@@ -78,7 +82,7 @@ try {
 
 // ── 다른 계좌인 척 ───────────────────────────────────────────────────────────
 console.log('\n[4] 증언되지 않은 계좌로 주장');
-ctx.currentPrivateState.navOpenValue = REAL_NAV;
+ctx.currentPrivateState.navValue = REAL_NAV;
 try {
   contract.impureCircuits.proveAttestedNav(ctx, b32(0xE9));
   console.log('    ❌❌ 미증언 계좌가 통과됨');

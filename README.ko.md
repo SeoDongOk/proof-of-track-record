@@ -242,7 +242,7 @@ Exception: potential witness-value disclosure must be declared but is not:
 - [x] Compact 툴체인 (네트워크와 맞춘 **0.31.1**, language_version 0.23, runtime 0.16.0)
 - [x] **회로 1** 전략 사전 커밋 `commitStrategy` / `revealMatchesCommitment`
 - [x] **회로 6** 전략 레지스트리 `registerStrategy` / `provenanceOf` (시행 횟수를 공개)
-- [x] **회로 7** 제3자 증언 `registerAttestor` / `submitAttestation` / `proveAttestedNav` (공증인 슬롯)
+- [x] **회로 7** 제3자 증언 `registerAttestor` / `submitAttestation` / `proveAttestedNav` (공증인 슬롯, 별도 컨트랙트로 배포)
 - [x] **회로 2** 거래 머클 커밋 `recordTrade`
 - [x] **회로 3** 수익률 임계값 증명 `proveReturnAtLeast`
 - [x] **회로 4** 리스크 한도 증명 `commitPortfolio` / `proveMaxWeight`
@@ -476,11 +476,18 @@ npm run live:real    # 배치 0, 1 각각 실제 ZK 증명 생성
 
 로컬 devnet 에 실제로 배포된다.
 
+컨트랙트 두 개를 배포한다.
+
 ```
-컨트랙트 주소: 7a3eff6c1c374d715a839c4ec01848f6b465c009218a4b3b4aa6005aece088b9
-트랜잭션     : 00cc52e62b94f916749a5fa19edc92b387ac3381cf54eb4ebb292354e3e948d23a
-블록         : 319          배포 소요: 23초
+track_record  86b49d3d59b10ee06208def05cf8753f5e4f854df03c7acd8481860f4d2368b5   블록 57  (21초)
+attestation   28fbb93db0f685dd2ad33177097508a2f12349d3eb75485487739b86b88c965d   블록 60  (19초)
 ```
+
+**왜 두 개인가.** 공증 레지스트리를 별도로 배포하는 이유는 두 가지다.
+설계상 공증인은 트레이더와 다른 주체이고 권한도 수명도 다르다. 실무적으로는
+회로 14개를 한 배포 트랜잭션에 넣으면 검증키가 28KB 가 되어 블록 한도를 넘는다
+(`RpcError 1010: Transaction would exhaust the block limits`).
+11개/23KB 와 3개/4.8KB 로 나누면 둘 다 통과한다.
 
 인덱서에서 `ContractDeploy` 로 확인된다.
 
