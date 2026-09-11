@@ -57,9 +57,12 @@ NAV 를 3배로 부풀림      -> 거부: nav does not open the attested commitm
 (4508 bytes, 2.0s — 여기서 가장 가벼운 회로).
 
 **데모 공증인은 신뢰 가치가 없다.** 실제 거래소를 보지 않고 주어진 NAV 를
-그대로 증언한다. 배선을 보여주기 위한 것이다. `src/attestor.mjs` 가 어댑터를
-정의하고, `zkTlsAttestor()` 가 TLSNotary/Reclaim 이 들어갈 미구현 슬롯이다.
-**그 연동이 남은 핵심 작업이다.**
+그대로 증언한다. 배선을 보여주기 위한 것이고 `npm run attest` 가 이걸 쓴다.
+
+**실제 경로는 구현되어 있다.** `src/attestor.mjs` 의 `primusAttestor()` 가
+Primus 공증인 네트워크를 통해 실제 zkTLS 세션을 돌려 거래소 엔드포인트를 직접
+읽는다. 아래 [zkTLS 공증](#zktls-공증--실제-경로) 참고.
+`npm run attest:live` 로 전 구간을 돌려볼 수 있다.
 
 참고로 "브로커가 잔고에 서명" 은 실제로는 성립하지 않는다. 바이낸스의 Ed25519
 는 *클라이언트* 가 요청에 서명하는 방향이고 거래소는 응답에 서명하지 않는다.
@@ -105,3 +108,46 @@ NAV 를 3배로 부풀림      -> 거부: nav does not open the attested commitm
 정공법은 Compact 0.34 의 `secp256k1EcdsaVerify` 다. 다만 0.34 는 ledger 9 대상이고
 현재 네트워크는 ledger 8 이라, 네트워크가 올라오면 그때 교체하는 것이 맞다.
 
+## zkTLS 공증 — 실제 경로
+
+`npm run attest:live` 는 실제 zkTLS 세션을 돈다. 공증인은 이 저장소가 아니라
+[Primus](https://primuslabs.xyz) 공증인 네트워크(AlphaNet)다.
+
+```
+[1] zkTLS 공증 요청  (public-ticker:BTCUSDT, mpctls)
+    GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
+    증언 대상: $.price
+[2] 공증인 서명 검증 통과
+    읽어온 값: price = 64211.37
+    NAV(Uint<48>): 64211370000
+    공증인이 읽은 것이지 우리가 넣은 값이 아니다
+[3] 공증인 등록
+[4] 증언 제출 — 원장에는 커밋만, NAV 값은 없다
+[5] 증언된 NAV 로 ZK 증명  -> 통과
+[6] NAV 를 3배로 부풀림     -> 거부
+```
+
+**우리가 직접 거래소 API 를 부르는 것과 왜 다른가.** API 키로 잔고를 읽으면
+그건 *우리가 읽었다고 주장하는* 숫자다. 바이낸스는 요청에 서명하지 응답에
+서명하지 않으므로 검증할 거래소 서명이 애초에 없다. zkTLS 세션에서는 요청을
+공증인 네트워크가 실행하고 응답 암호문이 TLS 세션에 묶이므로, 사후에 값을
+바꿔치기할 수 없다.
+
+| 모드 | 보장 | 비용 |
+|---|---|---|
+| `mpctls` (기본) | 공증인과 클라이언트가 세션 키를 나눠 가져, 클라이언트가 응답을 고칠 수 없다 | 느리다 |
+| `proxytls` | 공증인이 중계하며 암호문을 기록 | 빠르다 |
+
+`src/exchanges.mjs` 에 어댑터 둘이 들어 있다.
+
+| 어댑터 | 필요한 것 | 증명하는 것 |
+|---|---|---|
+| `publicTicker` (기본) | 없음 | 파이프라인이 끝까지 돈다 |
+| `binanceSpot` (`--binance`) | 읽기 전용 API 키 | 실제 계좌 잔고 |
+
+자격증명은 `.env` 에 넣는다(gitignore 됨). `.env.example` 참고. 거래소 API 키는
+체인에 가지 않는다. `accountId` 로는 `sha256(키)` 만 쓴다.
+
+**여전히 남는 가정.** Primus 공증인 그룹이 정직해야 하고 TLS 가 깨지지 않아야
+한다. 트레이더 혼자를 믿는 것보다는 낫고 데모 공증인보다는 훨씬 낫지만,
+분산 공증인 그룹도 결국 신뢰 가정이다. [신뢰 모델](trust-model.ko.md)에 적어 둔다.

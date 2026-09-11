@@ -29,6 +29,8 @@ npm run attest                   # circuit 7 — attestor slot
 
 npm run proof-server             # Docker, 1-2 min on first run
 npm run live                     # real ZK proof, 4508 bytes
+
+npm run attest:live              # real zkTLS session (needs Primus credentials)
 ```
 
 ## What it proves
@@ -49,9 +51,11 @@ What reaches the ledger is only the claim — `P&L floor 800500` while the actua
 
 ZK proves the **computation** was honest, not that the **inputs** were real.
 
-- **The attestor must be honest.** The demo attestor signs whatever it is handed.
-  `zkTlsAttestor()` in `src/attestor.mjs` is the unimplemented slot where
-  TLSNotary or Reclaim goes. **This is the main outstanding work.**
+- **The attestor must be honest.** `npm run attest:live` runs a real zkTLS
+  session through the [Primus](https://primuslabs.xyz) attestor network, which
+  reads the exchange endpoint itself — so the NAV is no longer self-declared.
+  What remains is trust in that attestor group and in TLS. The bundled
+  `demoAttestor()` signs whatever it is handed and is for wiring only.
 - **Identity is not Sybil-resistant.** A fresh identity resets the strategy
   counter unless `accountId` is bound to a KYC'd exchange account.
 

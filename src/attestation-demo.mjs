@@ -2,8 +2,11 @@
  * 제3자 증언 — 자기증명을 끊는다.
  *
  * ⚠️ 이 데모에서 공증인은 우리가 겸한다. 아키텍처는 실제지만 "자기가 자기에게
- *    서명" 하는 셈이라 설득력은 반감된다. 실전에서는 이 자리에
- *    zkTLS 공증인(TLSNotary / Reclaim)이 들어간다. 그게 남은 작업이다.
+ *    서명" 하는 셈이라 설득력은 반감된다. 회로 동작만 보기 위한 것이다.
+ *
+ *    실제 zkTLS 공증은 `npm run attest:live` (src/attestation-live.mjs) 에
+ *    구현되어 있다. 거기서는 Primus 공증인 네트워크가 거래소 엔드포인트를
+ *    직접 읽으므로, NAV 를 우리가 넣지 않는다.
  */
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { Contract, ledger } from '../build/attestation/contract/index.js';

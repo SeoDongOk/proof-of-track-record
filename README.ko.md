@@ -28,6 +28,8 @@ npm run attest                   # 회로 7 — 공증인 슬롯
 
 npm run proof-server             # Docker, 첫 실행 1-2분
 npm run live                     # 실제 ZK 증명, 4508 바이트
+
+npm run attest:live              # 실제 zkTLS 세션 (Primus 자격증명 필요)
 ```
 
 ## 무엇을 증명하나
@@ -48,9 +50,11 @@ npm run live                     # 실제 ZK 증명, 4508 바이트
 
 ZK 는 **계산이** 정직했음을 증명하지, **입력이** 진짜였음을 증명하지 않습니다.
 
-- **공증인이 정직해야 합니다.** 데모 공증인은 넘겨받은 값을 그대로 공증합니다.
-  `src/attestor.mjs` 의 `zkTlsAttestor()` 가 TLSNotary/Reclaim 이 들어갈 미구현
-  슬롯입니다. **이것이 남은 최대 과제입니다.**
+- **공증인이 정직해야 합니다.** `npm run attest:live` 는
+  [Primus](https://primuslabs.xyz) 공증인 네트워크를 통해 실제 zkTLS 세션을
+  돌립니다. 공증인이 거래소 엔드포인트를 직접 읽으므로 NAV 는 더 이상 자기
+  신고가 아닙니다. 남는 것은 그 공증인 그룹과 TLS 에 대한 신뢰입니다.
+  같이 들어 있는 `demoAttestor()` 는 넘겨받은 값을 그대로 공증하며 배선 확인용입니다.
 - **신원이 시빌 저항적이지 않습니다.** `accountId` 를 KYC 된 거래소 계정에 묶지
   않으면 새 신원을 만들어 전략 카운터를 0으로 되돌릴 수 있습니다.
 

@@ -60,10 +60,13 @@ Reproduce with `npm run attest`; `npm run attest:proof` generates the real ZK
 proof (4508 bytes, 2.0s — the lightest circuit here).
 
 **The demo attestor is not trustworthy.** It does not look at a real exchange;
-it attests whatever NAV it is handed. It exists to show the wiring.
-`src/attestor.mjs` defines the adapter, and `zkTlsAttestor()` is the unimplemented
-slot where TLSNotary or Reclaim goes. **That integration is the main outstanding
-work.**
+it attests whatever NAV it is handed. It exists to show the wiring, and
+`npm run attest` uses it.
+
+**The real path is implemented.** `primusAttestor()` in `src/attestor.mjs` runs an
+actual zkTLS session through the Primus attestor network and reads the exchange
+endpoint itself — see [zkTLS attestation](#zktls-attestation--the-real-path)
+below. `npm run attest:live` exercises it end to end.
 
 Note that "the broker signs the balance" does not actually work: Binance's Ed25519
 scheme has the *client* signing requests, and the exchange does not sign its
@@ -113,3 +116,48 @@ The proper answer is `secp256k1EcdsaVerify` in Compact 0.34. That release target
 ledger 9 while the current network runs ledger 8, so the right time to switch is
 when the network moves.
 
+## zkTLS attestation — the real path
+
+`npm run attest:live` runs an actual zkTLS session. The attestor is the
+[Primus](https://primuslabs.xyz) attestor network (AlphaNet), not this repository.
+
+```
+[1] zkTLS attestation requested   (public-ticker:BTCUSDT, mpctls)
+    GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
+    attesting: $.price
+[2] attestor signature verified
+    value read: price = 64211.37
+    NAV (Uint<48>): 64211370000
+    read by the attestor, not supplied by us
+[3] attestor registered
+[4] attestation submitted — the ledger holds the commitment, not the NAV
+[5] ZK proof with the attested NAV   -> accepted
+[6] NAV inflated 3x                  -> rejected
+```
+
+**Why this is not the same as calling the exchange API ourselves.** Reading a
+balance with an API key produces a number *we claim we read*. Binance signs
+requests, not responses, so there is no exchange signature to check. In a zkTLS
+session the request is executed by the attestor network and the response
+ciphertext is bound to the TLS session, so the value cannot be substituted after
+the fact.
+
+| Mode | Guarantee | Cost |
+|---|---|---|
+| `mpctls` (default) | attestor and client jointly derive session keys, so the client cannot alter the response | slower |
+| `proxytls` | attestor relays and records ciphertext | faster |
+
+Two adapters ship in `src/exchanges.mjs`:
+
+| Adapter | Needs | Proves |
+|---|---|---|
+| `publicTicker` (default) | nothing | that the pipeline runs end to end |
+| `binanceSpot` (`--binance`) | read-only API key | an actual account balance |
+
+Credentials go in `.env` (gitignored) — see `.env.example`. The exchange API key
+never reaches the chain; only `sha256(key)` is used as `accountId`.
+
+**What is still assumed.** The Primus attestor group must be honest and TLS must
+hold. That is weaker than trusting the trader alone, and stronger than the demo
+attestor, but it is not nothing — a decentralised attestor group is still a
+trust assumption. This is stated in [Trust model](trust-model.md).
