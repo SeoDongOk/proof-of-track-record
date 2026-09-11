@@ -290,3 +290,55 @@ batch 1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  실제 -285bp -> 주장 ">= -300bp
 주장값은 실제 합계를 50bp 단위로 내린 값입니다. 정확한 값(-356bp)은 witness 로만
 존재합니다.
 
+## 공개 테스트넷 — 누구나 검증 가능
+
+같은 흐름이 Midnight **Preview** 테스트넷에서도 돈다. 저자의 노트북에서 도는
+devnet 에 기록이 묶여 있지 않다는 뜻이다.
+
+| | 주소 | 블록 |
+|---|---|---|
+| `track_record` (회로 11개) | `7869ee72a2761b29189a6ea9de24065722bd68feee004be565ad027b5f36abdf` | 821701 |
+| `attestation` (회로 3개) | `f57c3092ed7605a8f8714021eebd8b80871f6062c99044f2bb1ede7ab3acdca0` | 821705 |
+
+```
+블록 821705  ContractDeploy   attestation 컨트랙트
+블록 821911  ContractCall     registerAttestor
+블록 821915  ContractCall     submitAttestation   <- NAV 커밋
+블록 821919  ContractCall     proveAttestedNav    <- ZK 증명
+```
+
+증언된 값은 실제 바이낸스 USDs-M 선물 계좌다.
+`totalMarginBalance = 20.71157147` USDT, Primus 공증인
+`0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6` 이 읽었다. 원장에는 커밋
+`ca89703830c04bd0534bd10e…` 만 있고 NAV 값 자체는 체인에 가지 않는다.
+
+직접 확인:
+
+```bash
+curl -s -X POST https://indexer.preview.midnight.network/api/v4/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"{ contractAction(address:\"f57c3092ed7605a8f8714021eebd8b80871f6062c99044f2bb1ede7ab3acdca0\"){ __typename address } }"}'
+```
+
+재현 (파우셋에서 자금을 받은 `wallet-preview.seed` 필요):
+
+```bash
+MN_NETWORK=preview node src/address.mjs          # 파우셋에 넣을 주소
+MN_NETWORK=preview node src/prepare-testnet.mjs  # NIGHT 를 DUST 생성용으로 등록
+MN_NETWORK=preview npm run deploy
+MN_NETWORK=preview node src/attest-onchain.mjs --futures
+```
+
+**Preview 가 로컬 devnet 과 다른 점 세 가지.** 각각이 배포를 막았다.
+
+1. `PreviewTestEnvironment` 는 `proofServer` 를 비워 둔다 — 증명서버는 각자
+   돌리는 것이라 설정에 URL 이 없고, 지갑 빌더가 그걸로 죽는다.
+2. testkit 의 `start(true)` 는 동기화 타임아웃이 90초로 박혀 있다. Preview 는
+   블록이 82만 개가 넘어 빈 지갑 동기화에 17~20분이 걸린다.
+   `src/wallet.mjs` 의 `startAndSync()` 가 `syncWallet` 을 긴 기한으로 돌린다.
+3. DUST 는 NIGHT UTXO 를 등록해야 쌓이기 시작하는데, 등록 전에는 dust 동기화가
+   완료로 넘어가지 않는다. "동기화 후 등록" 이 교착에 빠진다.
+   `prepare-testnet.mjs` 는 unshielded 만 기다린 뒤 등록하고 DUST 를 폴링한다.
+
+공개 RPC 는 웹소켓을 간헐적으로 끊는다(`1000 Normal Closure`). 제출은 백오프로
+재시도한다.

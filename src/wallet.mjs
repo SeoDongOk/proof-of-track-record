@@ -52,3 +52,31 @@ export async function buildWallet(logger, env, seed, feeOverhead = DEFAULT_FEE_O
     keystore,
   );
 }
+
+/**
+ * 지갑을 시작하고 동기화될 때까지 기다린다.
+ *
+ * testkit 의 walletProvider.start(true) 는 내부 syncWallet 타임아웃이 90초로
+ * 박혀 있다. 로컬 devnet(블록 수천 개)에는 충분하지만 Preview 는 블록이 82만
+ * 개라 shielded/dust 머클트리 스캔에 15~20분이 걸린다. 측정값: 16.6분.
+ *
+ * 그래서 로컬은 기존 경로를 쓰고, 공개 테스트넷은 start(false) 뒤
+ * syncWallet 을 긴 타임아웃으로 직접 호출한다.
+ *
+ * @param {object} wp     MidnightWalletProvider
+ * @param {string} net    'local' | 'preview' | 'preprod'
+ * @param {number} [timeoutMs]
+ */
+export async function startAndSync(wp, net, timeoutMs = Number(process.env.PTR_SYNC_TIMEOUT ?? 1_800_000)) {
+  if (net === 'local') {
+    await wp.start(true);
+    return;
+  }
+  const { syncWallet } = await import('@midnight-ntwrk/testkit-js');
+  await wp.start(false);
+  const t0 = Date.now();
+  process.stdout.write(`  동기화 중… 최대 ${(timeoutMs / 60000).toFixed(0)}분 `);
+  process.stdout.write(`\x1b[2m(Preview 는 블록이 많아 15~20분 걸립니다)\x1b[0m\n`);
+  await syncWallet(wp.wallet, 2_000, timeoutMs);
+  console.log(`  동기화 완료 (${((Date.now() - t0) / 60000).toFixed(1)}분)`);
+}

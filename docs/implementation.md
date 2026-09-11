@@ -301,3 +301,57 @@ profits — it checks whether a claim is *true*. A losing portfolio can still pr
 The claimed figure is the actual sum rounded down to 50bp. The exact value
 (-356bp) exists only as a witness.
 
+## Public testnet — verifiable by anyone
+
+The same flow runs on Midnight's **Preview** testnet, so the record does not
+depend on a devnet running on the author's machine.
+
+| | Address | Block |
+|---|---|---|
+| `track_record` (11 circuits) | `7869ee72a2761b29189a6ea9de24065722bd68feee004be565ad027b5f36abdf` | 821701 |
+| `attestation` (3 circuits) | `f57c3092ed7605a8f8714021eebd8b80871f6062c99044f2bb1ede7ab3acdca0` | 821705 |
+
+```
+block 821705  ContractDeploy   attestation contract
+block 821911  ContractCall     registerAttestor
+block 821915  ContractCall     submitAttestation   <- NAV commitment
+block 821919  ContractCall     proveAttestedNav    <- ZK proof
+```
+
+The attested value was a real Binance USDs-M futures account:
+`totalMarginBalance = 20.71157147` USDT, read by Primus attestor
+`0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6`. The ledger holds only the
+commitment `ca89703830c04bd0534bd10e…` — the NAV itself never reaches the chain.
+
+Check it yourself:
+
+```bash
+curl -s -X POST https://indexer.preview.midnight.network/api/v4/graphql \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"{ contractAction(address:\"f57c3092ed7605a8f8714021eebd8b80871f6062c99044f2bb1ede7ab3acdca0\"){ __typename address } }"}'
+```
+
+Reproduce (needs `wallet-preview.seed` funded from the faucet):
+
+```bash
+MN_NETWORK=preview node src/address.mjs          # address for the faucet
+MN_NETWORK=preview node src/prepare-testnet.mjs  # register NIGHT for dust
+MN_NETWORK=preview npm run deploy
+MN_NETWORK=preview node src/attest-onchain.mjs --futures
+```
+
+**Three things Preview does differently from a local devnet**, each of which
+stopped the deployment until it was handled:
+
+1. `PreviewTestEnvironment` leaves `proofServer` undefined — the proof server is
+   yours to run, so the config has no URL and the wallet builder throws on it.
+2. testkit's `start(true)` hardcodes a 90-second sync timeout. Preview has 820k+
+   blocks; a cold wallet takes 17-20 minutes. `startAndSync()` in `src/wallet.mjs`
+   drives `syncWallet` with a longer deadline instead.
+3. DUST only starts accruing once a NIGHT UTXO is registered for it — but the
+   dust sync does not report complete before that registration exists, so
+   "sync then register" deadlocks. `prepare-testnet.mjs` waits on unshielded
+   only, registers, then polls for DUST.
+
+The public RPC also drops its websocket intermittently (`1000 Normal Closure`),
+so submissions are retried with backoff.

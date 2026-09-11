@@ -63,9 +63,17 @@ ZK proves the **computation** was honest, not that the **inputs** were real.
 
 ## Status
 
-14 circuits across two contracts, real ZK proofs against proof server 8.1.0,
-on-chain deployment to a local devnet, and a **real zkTLS attestation** through the
-Primus attestor network (`npm run attest:live`, 4.8s) — all verified end to end.
+14 circuits across two contracts, real ZK proofs, a **real zkTLS attestation** of a
+Binance futures account through the Primus attestor network, and both contracts
+deployed on Midnight's **Preview testnet** — anyone can verify them.
+
+```
+block 821701  track_record deployed
+block 821705  attestation deployed
+block 821911  registerAttestor
+block 821915  submitAttestation   <- NAV commitment (the NAV stays private)
+block 821919  proveAttestedNav    <- ZK proof
+```
 
 | | |
 |---|---|

@@ -80,7 +80,7 @@ const { default: pino } = await import('pino');
 const { WebSocket } = await import('ws');
 const { LocalTestConfiguration,
         PreviewTestEnvironment, PreprodTestEnvironment } = await import('@midnight-ntwrk/testkit-js');
-const { buildWallet } = await import('./wallet.mjs');
+const { buildWallet, startAndSync } = await import('./wallet.mjs');
 const { setNetworkId } = await import('@midnight-ntwrk/midnight-js-network-id');
 const { deployContract, findDeployedContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 const { CompiledContract } = await import('@midnight-ntwrk/midnight-js-protocol/compact-js');
@@ -99,14 +99,16 @@ const env = NET === 'preview' ? new PreviewTestEnvironment().getEnvironmentConfi
           : new LocalTestConfiguration({ indexer: process.env.MN_INDEXER_PORT ?? '8088',
                                           node: process.env.MN_NODE_PORT ?? '9944',
                                           proofServer: process.env.MN_PROOF_PORT ?? '6300' });
+// 공개 테스트넷 설정에는 proofServer 가 비어 있다.
+env.proofServer ??= process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300';
 setNetworkId(env.networkId);
 
 // 수수료 오버헤드가 필요한 이유는 src/wallet.mjs 주석 참고.
+const { seedFor } = await import('./address.mjs');
 const walletProvider = await buildWallet(
-  pino({ level: 'warn' }), env,
-  process.env.PTR_SEED ?? '0000000000000000000000000000000000000000000000000000000000000002',
+  pino({ level: 'warn' }), env, seedFor(NET),
   BigInt(process.env.PTR_FEE_OVERHEAD ?? '1000000'));
-await walletProvider.start(true);
+await startAndSync(walletProvider, NET);
 console.log(`\n[2] 지갑 동기화  ${DIM(`(${NET}, ${env.networkId})`)}`);
 
 // witness 키 이름은 초기 private state 와 일치해야 한다 (deploy.mjs 와 동일)

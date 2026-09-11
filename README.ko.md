@@ -62,9 +62,17 @@ ZK 는 **계산이** 정직했음을 증명하지, **입력이** 진짜였음을
 
 ## 상태
 
-회로 14개(컨트랙트 2개), 증명 서버 8.1.0 연동 실제 ZK 증명, 로컬 devnet 온체인 배포,
-그리고 Primus 공증인 네트워크를 통한 **실제 zkTLS 공증**(`npm run attest:live`, 4.8초)
-— 전부 끝에서 끝까지 확인했습니다.
+회로 14개(컨트랙트 2개), 실제 ZK 증명, Primus 공증인 네트워크를 통한 바이낸스 선물
+계좌의 **실제 zkTLS 공증**, 그리고 두 컨트랙트 모두 Midnight **Preview 테스트넷**에
+배포 — 누구나 검증할 수 있습니다.
+
+```
+블록 821701  track_record 배포
+블록 821705  attestation 배포
+블록 821911  registerAttestor
+블록 821915  submitAttestation   <- NAV 커밋 (NAV 값은 비공개)
+블록 821919  proveAttestedNav    <- ZK 증명
+```
 
 | | |
 |---|---|

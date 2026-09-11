@@ -24,7 +24,7 @@ const { WebSocket } = await import('ws');
 const tk = await import('@midnight-ntwrk/testkit-js');
 const { LocalTestConfiguration,
         PreviewTestEnvironment, PreprodTestEnvironment } = tk;
-const { buildWallet } = await import('./wallet.mjs');
+const { buildWallet, startAndSync } = await import('./wallet.mjs');
 const { setNetworkId } = await import('@midnight-ntwrk/midnight-js-network-id');
 const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 const { CompiledContract } = await import('@midnight-ntwrk/midnight-js-protocol/compact-js');
@@ -44,8 +44,12 @@ if ((process.env.MN_NETWORK ?? 'local') === 'local') {
 }
 await requireProofServer(process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300');
 
-const SEED = process.env.PTR_SEED
-  ?? '0000000000000000000000000000000000000000000000000000000000000002';
+// 시드 선택은 address.mjs 가 한다.
+//   local   — 제네시스에서 자금이 들어간 계정. 소스에 공개돼 있고 그래도 된다.
+//   public  — wallet-<net>.seed 의 무작위 시드. 공개 시드를 쓰면 레포를 읽은
+//             누구나 파우셋 자금을 가져갈 수 있다.
+const { seedFor } = await import('./address.mjs');
+const SEED = seedFor(process.env.MN_NETWORK ?? 'local');
 
 // MN_NETWORK=local(기본) | preview | preprod
 // 지갑 계층은 셋 다 동일하다. testkit-js 의 MidnightWalletProvider 가
@@ -55,6 +59,8 @@ const env = NET === 'preview' ? new PreviewTestEnvironment().getEnvironmentConfi
           : NET === 'preprod' ? new PreprodTestEnvironment().getEnvironmentConfiguration()
           : new LocalTestConfiguration({ indexer: '8088', node: '9944', proofServer: '6300' });
 
+// 공개 테스트넷 설정에는 proofServer 가 비어 있다. 증명서버는 각자 로컬에서 돌린다.
+env.proofServer ??= process.env.PROOF_SERVER ?? 'http://127.0.0.1:6300';
 setNetworkId(env.networkId);
 console.log(`[${NET}] network=${env.networkId}`);
 console.log(`  indexer ${env.indexer}`);
@@ -65,7 +71,7 @@ const logger = pino({ level: 'warn' });
 // 배포만 할 때는 없어도 되지만, 같은 지갑으로 회로를 호출하면 필요하다.
 const walletProvider = await buildWallet(logger, env, SEED,
   BigInt(process.env.PTR_FEE_OVERHEAD ?? '1000000'));
-await walletProvider.start(true);          // 자금이 보일 때까지 대기
+await startAndSync(walletProvider, NET);   // 공개 테스트넷은 긴 동기화가 필요하다
 console.log('지갑 동기화 완료');
 console.log('  coinPublicKey:', walletProvider.getCoinPublicKey().slice(0, 40) + '…');
 
