@@ -624,3 +624,9 @@ $ node src/deploy.mjs    # Node 20 일 때
 - 백테스트 원본 분석: [Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
 - 생존 편향으로 알파가 사라진 과정:
   [블로그](https://seodongok.github.io/blog/2026-09-08-survivorship-bias-kills-alpha)
+
+## 라이선스
+
+Apache-2.0. [LICENSE](LICENSE) 참고.
+
+기반이 되는 Midnight SDK 들은 Apache-2.0, Compact 툴체인은 MIT 다.

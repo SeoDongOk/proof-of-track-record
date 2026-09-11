@@ -659,3 +659,9 @@ These are regenerable and are not committed.
   [Algorithmic_Trading_YL](https://github.com/SeoDongOk/Algorithmic_Trading_YL)
 - How survivorship bias erased the alpha:
   [blog post (Korean)](https://seodongok.github.io/blog/2026-09-08-survivorship-bias-kills-alpha)
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).
+
+The Midnight SDKs this builds on are Apache-2.0; the Compact toolchain is MIT.
