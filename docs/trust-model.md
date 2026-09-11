@@ -1,0 +1,115 @@
+# Trust model
+
+[← Back to README](../README.md)
+
+---
+
+## Trust model — what this stops and what it does not
+
+ZK proves that **the computation was honest**; it does not prove that
+**the inputs were complete.** Circuit 3 (trade-log sum) has a hole because of
+that: the trader chooses what goes into the log, so **simply never committing the
+losing trades** leaves a set from which true-but-misleading claims can be made.
+
+Circuit 5 (NAV delta) closes that hole. Commit the **account net asset value** at
+the start and end of a period and removing trades changes nothing — the balance
+is the balance.
+
+```
+Actual trades: 5 wins, 3 losses, sum -400bp   NAV 100,000,000 -> 96,000,000
+
+[1] claim from the 5 winners only (+950bp)  -> rejected: claimed return not met
+[2] claim the real result (>= -400bp)       -> accepted, ledger records 9600
+[3] inflate by a single bp (>= -399bp)      -> rejected: claimed return not met
+[4] halve the opening NAV after the fact    -> rejected: open nav does not match its commitment
+```
+
+Reproduce with `npm run nav`. `npm run nav:proof` generates a real ZK proof
+(4508 bytes, 7.9s — lighter than circuit 3 since there are no Merkle paths).
+
+### Breaking self-attestation — the attestor slot
+
+Commitments only guarantee *"I did not change what I said."* A NAV invented from
+the start passes every later proof honestly.
+
+**This is not a gap that can be engineered away.** Proving an external fact
+("my exchange balance is X") from inside a chain requires something that witnessed
+it. Obscura uses a TEE plus exchange APIs; zkTLS uses a notary. Different names,
+same role. So rather than hide it, this project exposes it as an explicit slot.
+
+The design point is that **signature verification happens outside the circuit**:
+
+1. An attestor reads the balance from the exchange's TLS session and posts
+   `(accountId, navCommitment)` on-chain
+2. Verifying the attestor's signature is done by the chain and the verifier with
+   ordinary tooling — the circuit never touches it
+3. The circuit only proves *"my private NAV opens that commitment"*
+
+That works on Compact 0.31 today. In-circuit signature verification would need
+0.34's `secp256k1EcdsaVerify`, and this design removes the need for it.
+
+```
+Claim NAV with no attestation   -> rejected: no attestation for that account
+Attestor posts the real balance -> ledger stores only the commitment
+Prove with the real NAV         -> accepted, NAV stays private
+Inflate the NAV 3x              -> rejected: nav does not open the attested commitment
+Claim an unattested account     -> rejected
+```
+
+Reproduce with `npm run attest`; `npm run attest:proof` generates the real ZK
+proof (4508 bytes, 2.0s — the lightest circuit here).
+
+**The demo attestor is not trustworthy.** It does not look at a real exchange;
+it attests whatever NAV it is handed. It exists to show the wiring.
+`src/attestor.mjs` defines the adapter, and `zkTlsAttestor()` is the unimplemented
+slot where TLSNotary or Reclaim goes. **That integration is the main outstanding
+work.**
+
+Note that "the broker signs the balance" does not actually work: Binance's Ed25519
+scheme has the *client* signing requests, and the exchange does not sign its
+responses. This is why zkTLS — which needs no cooperation from the exchange — is
+the route.
+
+### What this moves, and what remains
+
+| Stopped | Remaining assumption |
+|---|---|
+| Lying about a committed value | **The attestor is honest** |
+| Computing returns with losses omitted | **Identity is not Sybil-resistant on its own** |
+| Lowering the opening balance after the fact | |
+| Changing the strategy after the fact | |
+| Hiding how many strategies were attempted | |
+| Inventing a NAV (with an attestor) | |
+
+**On Sybil:** the strategy registry counts per trader identity, so a fresh
+identity resets the counter to zero. Binding `accountId` to a **KYC'd exchange
+account** is what gives that identity weight — ten identities then require ten
+KYC'd accounts, which is expensive and usually not permitted. Without that
+binding, an anonymous trader can still start over.
+
+### What was attempted, and why it was deferred
+
+Toolchain 0.31.1 ships no packaged signature verification, so Schnorr was
+assembled by hand from the Jubjub primitives. The circuit compiled and the
+verification equation held (`s·G == R + e·P`), but it broke down at
+**reducing the challenge into the scalar field.**
+
+| Measured | |
+|---|---|
+| `ecMul` / `ecMulGenerator` scalar bound | `6554484396890773809930967563523245729705921265872317281365359162392183254198` (Jubjub scalar field r−1) |
+| `transientHash` output | base-field element (~2^255). **Exceeds the scalar field** |
+| `as Uint<248>` | a range check, not truncation — fails on hash output |
+| Compact `Uint` maximum width | 248 bits |
+| `Bytes<32>` → `Uint` in-circuit | not available (`convertBytesToField` is runtime-only) |
+| Usable EC ops | `ecAdd` `ecMul` `ecMulGenerator` `hashToCurve`; points compare with `==` |
+
+The remaining route is a bit-decomposition gadget: take the low 248 bits as a
+witness and verify the decomposition in-circuit — but Field wraparound means the
+uniqueness of that decomposition has to be argued separately.
+**Shipping unreviewed hand-rolled signature verification is worse than shipping
+none, so it was reverted.**
+
+The proper answer is `secp256k1EcdsaVerify` in Compact 0.34. That release targets
+ledger 9 while the current network runs ledger 8, so the right time to switch is
+when the network moves.
+
