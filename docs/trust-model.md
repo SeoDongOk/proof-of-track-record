@@ -284,3 +284,20 @@ Neither the API key nor the `uid` reaches the chain — only `sha256(uid)`.
 can still open accounts on other exchanges. What changes is the price: an
 identity goes from free to one KYC. If the exchange runs weak KYC, this inherits
 that too. `--unbound` keeps the old key-based behaviour for comparison.
+
+### On Preview, with the identity bound
+
+The same flow re-run after `accountId` moved from `sha256(apiKey)` to
+`sha256(uid)`:
+
+```
+block 848761  ContractCall  submitAttestation   uid-bound accountId
+block 848765  ContractCall  proveAttestedNav    ZK proof
+```
+
+The attested NAV was `totalMarginBalance = 18.94934329` on the same live futures
+account (it had moved from 20.71 since the earlier run — the bot keeps trading).
+The contract now reports `attestationCount = 2`: the key-bound account from the
+first run and the uid-bound one from this run are correctly different accounts.
+The `uid` is masked in the script output and never leaves the machine — only
+`sha256(uid)` reaches the chain.

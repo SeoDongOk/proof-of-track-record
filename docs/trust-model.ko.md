@@ -271,3 +271,19 @@ API 키도 `uid` 도 체인에 가지 않는다. 올라가는 것은 `sha256(uid
 계정을 열면 여전히 신원이 늘어난다. 바뀌는 건 가격이다 — 신원 하나가 공짜에서
 **KYC 1회**가 된다. 거래소 KYC 가 부실하면 그 부실함도 그대로 상속한다.
 비교용으로 `--unbound` 를 주면 기존 키 기반 동작으로 떨어진다.
+
+### Preview 에서, 신원을 묶은 뒤
+
+`accountId` 를 `sha256(apiKey)` 에서 `sha256(uid)` 로 바꾼 뒤 같은 흐름을 다시 돌렸다.
+
+```
+블록 848761  ContractCall  submitAttestation   uid 기반 accountId
+블록 848765  ContractCall  proveAttestedNav    ZK 증명
+```
+
+증언된 NAV 는 같은 실계좌의 `totalMarginBalance = 18.94934329` 다
+(앞선 실행의 20.71 에서 움직였다 — 봇이 계속 거래 중이다).
+컨트랙트의 `attestationCount` 가 이제 2 다. 첫 실행의 키 기반 계좌와 이번의
+uid 기반 계좌가 **서로 다른 계좌로** 올바르게 인식됐다는 뜻이다.
+`uid` 는 스크립트 출력에서 마스킹되고 머신 밖으로 나가지 않는다.
+체인에 가는 것은 `sha256(uid)` 뿐이다.
