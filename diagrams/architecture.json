@@ -1,0 +1,367 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Proof of Track Record",
+    "subtitle": "Commit the strategy before you trade. Prove the result after.",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1200,
+      600
+    ],
+    "repository": {
+      "url": "https://github.com/SeoDongOk/proof-of-track-record",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "f71af03b3ee7b00354bfd3956d85d3b721ca75ed"
+    },
+    "views": [
+      {
+        "id": "private-side",
+        "label": "What stays private",
+        "focus": [
+          "trader",
+          "witness",
+          "proofserver"
+        ],
+        "note": "Strategy, trades and NAV exist only as witnesses. Compact refuses to compile a path from here to the ledger."
+      },
+      {
+        "id": "attestation-path",
+        "label": "Where the NAV comes from",
+        "focus": [
+          "binance",
+          "primus",
+          "attestation"
+        ],
+        "note": "The attestor reads the exchange over TLS itself, so the NAV is not self-declared."
+      },
+      {
+        "id": "public-side",
+        "label": "What a verifier sees",
+        "focus": [
+          "trackrecord",
+          "midnight",
+          "verifier"
+        ],
+        "note": "Only commitments and proven claims reach the ledger."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "trader",
+      "type": "external",
+      "label": "Trader",
+      "sublabel": "Runs the strategy",
+      "pos": [
+        40,
+        215
+      ],
+      "size": [
+        150,
+        72
+      ]
+    },
+    {
+      "id": "witness",
+      "type": "security",
+      "label": "Private witnesses",
+      "sublabel": "Strategy, trades, NAV",
+      "pos": [
+        40,
+        370
+      ],
+      "size": [
+        150,
+        72
+      ],
+      "sources": [
+        {
+          "path": "src/witnesses.mjs",
+          "label": "witness wiring"
+        },
+        {
+          "path": "contracts/track_record.compact",
+          "line": 32,
+          "label": "ledger vs witness"
+        }
+      ]
+    },
+    {
+      "id": "binance",
+      "type": "external",
+      "label": "Binance Futures",
+      "sublabel": "fapi/v3/account",
+      "pos": [
+        260,
+        60
+      ],
+      "size": [
+        160,
+        72
+      ],
+      "sources": [
+        {
+          "path": "src/exchanges.mjs",
+          "line": 100,
+          "label": "binanceFutures adapter"
+        }
+      ]
+    },
+    {
+      "id": "primus",
+      "type": "security",
+      "label": "Primus attestors",
+      "sublabel": "zkTLS · mpctls",
+      "pos": [
+        500,
+        60
+      ],
+      "size": [
+        160,
+        72
+      ],
+      "sources": [
+        {
+          "path": "src/attestor.mjs",
+          "line": 49,
+          "label": "primusAttestor"
+        }
+      ]
+    },
+    {
+      "id": "attestation",
+      "type": "database",
+      "label": "attestation",
+      "sublabel": "3 circuits · block 821705",
+      "pos": [
+        750,
+        60
+      ],
+      "size": [
+        170,
+        78
+      ],
+      "sources": [
+        {
+          "path": "contracts/attestation.compact",
+          "line": 68,
+          "label": "submitAttestation"
+        },
+        {
+          "path": "contracts/attestation.compact",
+          "line": 82,
+          "label": "proveAttestedNav"
+        }
+      ]
+    },
+    {
+      "id": "proofserver",
+      "type": "backend",
+      "label": "Proof server",
+      "sublabel": "Local Docker, 8.1.0",
+      "pos": [
+        280,
+        370
+      ],
+      "size": [
+        160,
+        72
+      ],
+      "sources": [
+        {
+          "path": "src/zk-config.mjs",
+          "label": "proving provider"
+        }
+      ]
+    },
+    {
+      "id": "trackrecord",
+      "type": "database",
+      "label": "track_record",
+      "sublabel": "11 circuits · block 821701",
+      "pos": [
+        750,
+        228
+      ],
+      "size": [
+        170,
+        78
+      ],
+      "sources": [
+        {
+          "path": "contracts/track_record.compact",
+          "line": 77,
+          "label": "commitStrategy"
+        },
+        {
+          "path": "contracts/track_record.compact",
+          "line": 185,
+          "label": "proveReturnAtLeast"
+        },
+        {
+          "path": "contracts/track_record.compact",
+          "line": 318,
+          "label": "proveNavReturnAtLeast"
+        }
+      ]
+    },
+    {
+      "id": "midnight",
+      "type": "cloud",
+      "label": "Midnight Preview",
+      "sublabel": "Public ledger · verifiable",
+      "pos": [
+        750,
+        387
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "verifier",
+      "type": "external",
+      "label": "Verifier",
+      "sublabel": "Sees claims only",
+      "pos": [
+        1010,
+        228
+      ],
+      "size": [
+        150,
+        72
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "trader-witness",
+      "from": "trader",
+      "to": "witness",
+      "label": "keeps private",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        115,
+        322
+      ]
+    },
+    {
+      "id": "trader-commit",
+      "from": "trader",
+      "to": "trackrecord",
+      "label": "commit strategy first",
+      "variant": "emphasis",
+      "toSide": "left",
+      "labelAt": [
+        470,
+        232
+      ]
+    },
+    {
+      "id": "binance-primus",
+      "from": "binance",
+      "to": "primus",
+      "label": "TLS session",
+      "variant": "security",
+      "labelDy": -24
+    },
+    {
+      "id": "primus-attestation",
+      "from": "primus",
+      "to": "attestation",
+      "label": "NAV commitment",
+      "variant": "emphasis",
+      "labelDy": -24
+    },
+    {
+      "id": "witness-proof",
+      "from": "witness",
+      "to": "proofserver",
+      "label": "witness inputs",
+      "variant": "dashed",
+      "labelAt": [
+        235,
+        447
+      ]
+    },
+    {
+      "id": "proof-trackrecord",
+      "from": "proofserver",
+      "to": "trackrecord",
+      "label": "ZK proofs",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "labelAt": [
+        590,
+        361
+      ]
+    },
+    {
+      "id": "attestation-trackrecord",
+      "from": "attestation",
+      "to": "trackrecord",
+      "label": "attested NAV",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        900,
+        176
+      ]
+    },
+    {
+      "id": "trackrecord-midnight",
+      "from": "trackrecord",
+      "to": "midnight",
+      "label": "commitments only",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        905,
+        344
+      ]
+    },
+    {
+      "id": "trackrecord-verifier",
+      "from": "trackrecord",
+      "to": "verifier",
+      "label": "proven claim",
+      "variant": "emphasis",
+      "labelDy": -24
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "Never reaches the ledger",
+      "items": [
+        "Strategy parameters",
+        "Individual trades and P&L",
+        "Account NAV (20.71157147 USDT)"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "On the public ledger",
+      "items": [
+        "Strategy commitment hash",
+        "How many strategies were attempted",
+        "NAV commitment from the attestor",
+        "Proven floors: P&L >= X, weight <= Y"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Still assumed",
+      "items": [
+        "Primus attestor group is honest",
+        "TLS is not broken",
+        "Identity is not Sybil-resistant alone"
+      ]
+    }
+  ]
+}
