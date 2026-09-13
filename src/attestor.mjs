@@ -84,11 +84,20 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
     source: 'primus-zktls',
 
     /**
+     * 어댑터를 공증한다. 단일 요청과 배치 요청을 모두 받는다.
+     *
+     * 배치를 쓰는 이유: 계정 식별자와 NAV 를 **한 세션에서** 읽어야 한다.
+     * 따로 두 번 공증하면 서로 다른 계정의 uid 와 잔고를 짝지어 제출할 수 있다.
+     * 같은 증언 안에 있어야 "이 uid 의 잔고가 이것"이 성립한다.
+     *
      * @param {object} adapter src/exchanges.mjs 의 어댑터
      * @returns {Promise<Attestation & {raw: object, attestation: object}>}
      */
     async attest(adapter, { salt } = {}) {
-      if (!adapter?.url) throw new Error('primusAttestor: 거래소 어댑터를 넘겨야 한다 (src/exchanges.mjs)');
+      const batch = Array.isArray(adapter?.requests);
+      if (!batch && !adapter?.url) {
+        throw new Error('primusAttestor: 거래소 어댑터를 넘겨야 한다 (src/exchanges.mjs)');
+      }
       if (!salt) throw new Error('primusAttestor: 개봉 난수 salt 가 필요하다');
 
       const { PrimusCoreTLS } = await import('@primuslabs/zktls-core-sdk');
@@ -97,10 +106,14 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
         await sdk.init(appId, appSecret);
       }
 
-      const req = { url: adapter.url, method: adapter.method, header: adapter.header, body: adapter.body };
-      const resolves = [{ keyName: adapter.keyName, parseType: 'json', parsePath: adapter.parsePath }];
+      // 배치면 요청 배열과 그에 맞춘 resolve 배열의 배열을 넘긴다.
+      const specs = batch ? adapter.requests : [adapter];
+      const reqs = specs.map((r) => ({ url: r.url, method: r.method, header: r.header, body: r.body }));
+      const resolves = specs.map((r) => [{ keyName: r.keyName, parseType: 'json', parsePath: r.parsePath }]);
 
-      const attRequest = sdk.generateRequestParams(req, resolves);
+      const attRequest = batch
+        ? sdk.generateRequestParams(reqs, resolves)
+        : sdk.generateRequestParams(reqs[0], resolves[0]);
       attRequest.setAttMode({ algorithmType });
 
       const attestation = await sdk.startAttestation(attRequest, timeoutMs);
@@ -110,20 +123,41 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
         throw new Error('primusAttestor: 공증 서명 검증 실패 — 증언을 신뢰할 수 없다');
       }
 
-      const rawValue = extractValue(attestation, adapter.keyName);
-      if (rawValue === undefined) {
-        throw new Error(
-          `primusAttestor: 증언에서 '${adapter.keyName}' 를 찾지 못했다.\n` +
-          `  parsePath 가 응답 구조와 맞는지 확인: ${adapter.parsePath}`);
+      const read = (keyName, parsePath) => {
+        const v = extractValue(attestation, keyName);
+        if (v === undefined) {
+          throw new Error(
+            `primusAttestor: 증언에서 '${keyName}' 를 찾지 못했다.\n` +
+            `  parsePath 가 응답 구조와 맞는지 확인: ${parsePath}`);
+        }
+        return v;
+      };
+
+      // NAV 를 내는 요청과, 계정 식별자를 내는 요청을 구분한다.
+      const navSpec = specs.find((r) => typeof r.toNav === 'function') ?? specs[0];
+      const idSpec  = specs.find((r) => r.identity === true);
+
+      const rawNav = read(navSpec.keyName, navSpec.parsePath);
+      const nav = navSpec.toNav(rawNav);
+
+      // 계정 식별자가 증언에 들어 있으면 그걸로 accountId 를 만든다.
+      // 없으면 어댑터가 주는 값(보통 API 키 해시)으로 떨어진다 — 시빌에 약하다.
+      let accountId, identity = null;
+      if (idSpec) {
+        const rawId = String(read(idSpec.keyName, idSpec.parsePath));
+        identity = { keyName: idSpec.keyName, value: rawId, attested: true };
+        accountId = sha(`${adapter.identityPrefix ?? adapter.name}:${rawId}`);
+      } else {
+        accountId = adapter.accountId();
       }
 
-      const nav = adapter.toNav(rawValue);
       return {
-        accountId: adapter.accountId(),
+        accountId,
         navCommitment: rt.persistentCommit(u48(), nav, salt),
         nav, salt,
+        identity,                  // null 이면 계정에 묶이지 않은 것이다
         source: `primus:${algorithmType}:${adapter.name}`,
-        raw: { value: rawValue, keyName: adapter.keyName },
+        raw: { value: rawNav, keyName: navSpec.keyName },
         attestation,               // 검증자가 독립적으로 재검증할 수 있도록 그대로 넘긴다
       };
     },

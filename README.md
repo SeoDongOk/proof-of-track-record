@@ -67,8 +67,10 @@ ZK proves the **computation** was honest, not that the **inputs** were real.
   reads the exchange endpoint itself — so the NAV is no longer self-declared.
   What remains is trust in that attestor group and in TLS. The bundled
   `demoAttestor()` signs whatever it is handed and is for wiring only.
-- **Identity is not Sybil-resistant.** A fresh identity resets the strategy
-  counter unless `accountId` is bound to a KYC'd exchange account.
+- **Sybil resistance is inherited, not created.** `accountId` is `sha256(uid)`,
+  where the `uid` is read from the exchange by the attestor in the same session as
+  the balance — so a new API key is not a new identity, but a new *account* is.
+  An identity costs one KYC, not zero. Weak KYC at the exchange is inherited too.
 
 ## Status
 

@@ -18,7 +18,7 @@ import 'dotenv/config';
 import { randomBytes } from 'node:crypto';
 import * as rt from '@midnight-ntwrk/compact-runtime';
 import { primusAttestor } from './attestor.mjs';
-import { binanceSpot, binanceFutures, publicTicker, NAV_SCALE } from './exchanges.mjs';
+import { binanceSpot, binanceFutures, binanceFuturesBound, publicTicker, NAV_SCALE } from './exchanges.mjs';
 import { Contract, ledger } from '../build/attestation/contract/index.js';
 
 const argv = process.argv.slice(2);
@@ -66,7 +66,10 @@ ${DIM('  거래소 계정 없이 파이프라인만 확인하려면 플래그 �
 
 let adapter;
 if (has('--futures')) {
-  adapter = binanceFutures({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') });
+  // 기본은 계정(uid)에 묶는 쪽이다. --unbound 면 API 키 해시로 떨어진다.
+  adapter = has('--unbound')
+    ? binanceFutures({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') })
+    : binanceFuturesBound({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') });
 } else if (has('--binance')) {
   adapter = binanceSpot(binanceCreds());
 } else {
@@ -78,8 +81,11 @@ const algorithmType = opt('--mode', 'mpctls');
 
 // ── 1~2) zkTLS 공증 ──────────────────────────────────────────────────────────
 console.log(`[1] zkTLS 공증 요청  ${DIM(`(${adapter.name}, ${algorithmType})`)}`);
-console.log(DIM(`    ${adapter.method} ${adapter.url.replace(/signature=[0-9a-f]+/, 'signature=…')}`));
-console.log(DIM(`    증언 대상: ${adapter.parsePath}`));
+const specs = adapter.requests ?? [adapter];
+for (const r of specs) {
+  console.log(DIM(`    ${r.method} ${r.url.replace(/signature=[0-9a-f]+/, 'signature=…')}`));
+  console.log(DIM(`      → ${r.parsePath}${r.identity ? '   (계정 식별자)' : ''}`));
+}
 
 const salt = new Uint8Array(randomBytes(32));
 const attestor = primusAttestor({ appId, appSecret, algorithmType });
@@ -104,6 +110,15 @@ console.log(`    NAV(Uint<48>): ${att.nav}  ${DIM(`(scale ${NAV_SCALE})`)}`);
 const attestors = att.attestation?.attestors ?? [];
 for (const a of attestors) console.log(`    공증인: ${a.attestorAddr} ${DIM(`(${a.url})`)}`);
 console.log(DIM(`    공증인이 읽은 것이지 우리가 넣은 값이 아니다.`));
+if (att.identity) {
+  const shown = String(att.identity.value);
+  const masked = shown.length > 4 ? shown.slice(0, 3) + '*'.repeat(shown.length - 3) : '***';
+  console.log(`    계정 식별자: ${att.identity.keyName} = ${masked}  ${DIM('(공증됨, 마스킹)')}`);
+  console.log(DIM(`    → accountId 가 API 키가 아니라 거래소 계정에 묶인다.`));
+  console.log(DIM(`      키를 새로 발급해도 같은 신원이다. 새 신원은 새 계정 = 새 KYC.`));
+} else {
+  console.log(`    ${RED('계정 식별자 없음')} — accountId 가 API 키 해시다. 키를 새로 만들면 새 신원이 된다.`);
+}
 
 // 서명 검증이 형식적이지 않다는 확인. 값을 한 글자 바꾸면 거부되어야 한다.
 console.log(`\n[2b] 증언 값을 변조하면 검증이 거부하는가`);
@@ -144,7 +159,9 @@ console.log(`\n[3] 공증인 등록: ${hex(attestor.id(), 12)}…`);
 
 ctx = contract.impureCircuits.submitAttestation(ctx, att.accountId, att.navCommitment).context;
 console.log(`[4] 증언 제출`);
-console.log(`    계좌: ${hex(att.accountId, 12)}…  ${DIM('(API 키의 해시. 키는 체인에 없다)')}`);
+console.log(`    계좌: ${hex(att.accountId, 12)}…  ${DIM(att.identity
+  ? '(공증된 uid 의 해시. uid 도 키도 체인에 없다)'
+  : '(API 키의 해시. 키는 체인에 없다)')}`);
 console.log(`    커밋: ${hex(att.navCommitment)}…`);
 console.log(`    원장에 NAV 값 ${att.nav} 은 ${RED('없다')}`);
 

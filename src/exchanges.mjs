@@ -115,7 +115,62 @@ export function binanceFutures({ apiKey, apiSecret, recvWindow = 60_000,
   };
 }
 
+/**
+ * 바이낸스 선물 + 계정 식별자를 **한 세션에서** 공증한다. (시빌 대응)
+ *
+ * 왜 필요한가. binanceFutures 는 accountId 로 sha256(apiKey) 를 쓴다. API 키는
+ * 계정당 몇 개든 즉시 발급되므로, 키를 새로 만들면 새 신원이 되고 전략
+ * 레지스트리의 시행 횟수 카운터가 0 으로 초기화된다. 회로 6 이 무력해진다.
+ *
+ * 거래소는 이미 KYC 를 한다. 문제는 우리가 그 KYC 된 신원이 아니라 **키**에
+ * 묶었다는 것이다. 그래서 계정 식별자(uid)에 묶는다.
+ *
+ *   /fapi/v3/account  — 필드 13개 전부 금액·포지션. 계정 식별자가 없다
+ *   /api/v3/account   — uid 를 준다. 바이낸스는 스팟과 선물이 같은 마스터 계정이다
+ *
+ * 두 요청을 **한 증언 안에** 넣는 것이 핵심이다. 따로 두 번 공증하면 A 계정의
+ * uid 와 B 계정의 잔고를 짝지어 제출할 수 있다.
+ *
+ * 이렇게 해도 시빌이 사라지지는 않는다. 거래소를 바꿔 가며 계정을 만들 수 있다.
+ * 다만 신원 하나가 공짜에서 **KYC 1회**가 된다. 우리가 시빌 저항을 만드는 게
+ * 아니라 거래소의 것을 상속하는 것이다 — 그게 정확한 표현이다.
+ */
+export function binanceFuturesBound({ apiKey, apiSecret, recvWindow = 60_000,
+                                      futuresBase = 'https://fapi.binance.com',
+                                      spotBase = 'https://api.binance.com',
+                                      field = 'totalMarginBalance' }) {
+  if (!apiKey || !apiSecret) throw new Error('binanceFuturesBound: apiKey / apiSecret 이 필요하다');
+  const sign = (qs) => createHmac('sha256', apiSecret).update(qs).digest('hex');
+  const hdr = { 'X-MBX-APIKEY': apiKey };
+
+  // 타임스탬프는 요청마다 새로 만든다. 한쪽이 창을 벗어나면 그 요청만 실패한다.
+  const fq = `recvWindow=${recvWindow}&timestamp=${Date.now()}`;
+  const sq = `recvWindow=${recvWindow}&timestamp=${Date.now()}`;
+
+  return {
+    name: 'binance-futures-bound',
+    identityPrefix: 'binance-uid',
+    requests: [
+      {
+        url: `${spotBase}/api/v3/account?${sq}&signature=${sign(sq)}`,
+        method: 'GET', header: hdr, body: '',
+        keyName: 'uid', parsePath: '$.uid',
+        identity: true,                       // 이 값이 accountId 가 된다
+      },
+      {
+        url: `${futuresBase}/fapi/v3/account?${fq}&signature=${sign(fq)}`,
+        method: 'GET', header: hdr, body: '',
+        keyName: field, parsePath: `$.${field}`,
+        toNav: (v) => toScaledInt(v),         // 이 값이 NAV 가 된다
+      },
+    ],
+    // 배치에서는 쓰이지 않지만, 어댑터 형태를 맞추기 위해 남겨 둔다.
+    accountId: () => sha256(`binance-futures:${apiKey}`),
+  };
+}
+
 export const ADAPTERS = {
+  'binance-futures-bound': binanceFuturesBound,
   'binance-futures': binanceFutures,
   'binance-spot': binanceSpot,
   'public-ticker': publicTicker,

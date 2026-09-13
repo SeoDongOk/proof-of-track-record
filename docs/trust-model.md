@@ -245,3 +245,42 @@ only as `RpcError 1010: Custom error: 117`. Deploy transactions write more bytes
 so their fee is positive and they are unaffected; calls fail while deploys
 succeed. Setting a non-zero `additionalFeeOverhead` on the wallet forces a real
 `DustSpend`. See `src/wallet.mjs`.
+
+## Binding identity to the exchange account, not the API key
+
+The strategy registry counts attempts per trader identity. If that identity is
+cheap to recreate, circuit 6 proves nothing — so what `accountId` is derived from
+matters more than it looks.
+
+The first version used `sha256(apiKey)`. An exchange issues API keys on demand,
+so a new key was a new identity and the attempt counter reset to zero. The
+exchange already runs KYC; the mistake was binding to the **key** instead of the
+**KYC'd account**.
+
+`GET /fapi/v3/account` has no account identifier — all thirteen fields are
+balances and positions. `GET /api/v3/account` returns `uid`, and on Binance spot
+and futures share one master account. So `binanceFuturesBound` attests both
+endpoints **in a single zkTLS session**:
+
+```
+[0] $.uid                 (identity)   -> accountId = sha256("binance-uid:" + uid)
+[1] $.totalMarginBalance  (nav)        -> the NAV being proven
+```
+
+One session is the point. Two separate attestations would let a trader pair
+account A's `uid` with account B's balance.
+
+Measured, with the same account and two different API keys:
+
+```
+sha256(apiKey)      key A -> dc16576b458f510b…    key B -> 8a2485a15b205ad3…   different
+sha256(uid)         key A -> 74e3d3267016c65c…    key B -> 74e3d3267016c65c…   same
+another account                                   uid 999999999 -> 567705e5268bd1b6…
+```
+
+Neither the API key nor the `uid` reaches the chain — only `sha256(uid)`.
+
+**This does not create Sybil resistance; it inherits the exchange's.** A trader
+can still open accounts on other exchanges. What changes is the price: an
+identity goes from free to one KYC. If the exchange runs weak KYC, this inherits
+that too. `--unbound` keeps the old key-based behaviour for comparison.

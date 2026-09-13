@@ -38,7 +38,7 @@ if (!appId || !appSecret) {
 }
 
 const { primusAttestor } = await import('./attestor.mjs');
-const { binanceSpot, binanceFutures, publicTicker } = await import('./exchanges.mjs');
+const { binanceSpot, binanceFutures, binanceFuturesBound, publicTicker } = await import('./exchanges.mjs');
 
 const binanceCreds = () => {
   const apiKey = process.env.BINANCE_API_KEY;
@@ -52,7 +52,9 @@ const binanceCreds = () => {
 
 let adapter;
 if (has('--futures')) {
-  adapter = binanceFutures({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') });
+  adapter = has('--unbound')
+    ? binanceFutures({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') })
+    : binanceFuturesBound({ ...binanceCreds(), field: opt('--field', 'totalMarginBalance') });
 } else if (has('--binance')) {
   adapter = binanceSpot(binanceCreds());
 } else {
@@ -74,6 +76,10 @@ try {
 }
 console.log(`    ${att.raw.keyName} = ${att.raw.value}  →  NAV ${att.nav}  ${DIM(`(${((Date.now()-t0)/1000).toFixed(1)}s)`)}`);
 for (const a of att.attestation?.attestors ?? []) console.log(`    공증인: ${a.attestorAddr}`);
+if (att.identity) {
+  const v = String(att.identity.value);
+  console.log(`    계정 식별자: ${att.identity.keyName} = ${v.slice(0,3)}${'*'.repeat(Math.max(0,v.length-3))} ${DIM('(공증됨, 마스킹)')}`);
+}
 
 // ── 체인 연결 ────────────────────────────────────────────────────────────────
 const { default: pino } = await import('pino');
