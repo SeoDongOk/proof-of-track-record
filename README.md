@@ -17,6 +17,15 @@ This started from the author's own backtest: **23.63% annualized** collapsed to
 **14.48%** once survivorship bias was removed, with excess return at **p = 0.566**.
 Nothing was forged — the pipeline was simply re-runnable, and that leaves no trace.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/architecture-dark.png">
+  <img alt="Architecture: the strategy, trades and NAV stay on the private side; only commitments and proven claims reach the ledger" src="diagrams/architecture-light.png">
+</picture>
+
+The left column never reaches the chain. `diagrams/architecture.html` is the same
+diagram as a self-contained interactive page — clone and open it, or see
+[diagrams/](diagrams/) for how it is generated and pinned to the source.
+
 ## Quick start
 
 ```bash

@@ -16,6 +16,15 @@
 **14.48%** 로 주저앉았고, 초과수익은 **p = 0.566** 이었습니다. 조작한 것은 없습니다.
 파이프라인이 그저 다시 돌릴 수 있었을 뿐이고, 그건 흔적을 남기지 않습니다.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/architecture-dark.png">
+  <img alt="아키텍처: 전략·거래·NAV 는 비공개 쪽에 남고, 원장에는 커밋과 증명된 주장만 올라간다" src="diagrams/architecture-light.png">
+</picture>
+
+왼쪽 열은 체인에 닿지 않습니다. `diagrams/architecture.html` 은 같은 다이어그램의
+자체완결 인터랙티브 버전입니다 — 클론해서 열어보시면 됩니다. 생성 방법과 소스
+고정 방식은 [diagrams/](diagrams/) 참고.
+
 ## 빠른 시작
 
 ```bash
