@@ -301,3 +301,38 @@ The contract now reports `attestationCount = 2`: the key-bound account from the
 first run and the uid-bound one from this run are correctly different accounts.
 The `uid` is masked in the script output and never leaves the machine — only
 `sha256(uid)` reaches the chain.
+
+### Verifying an attestation without an account
+
+Producing a new attestation needs a Primus account, which is a barrier for anyone
+reading this repository for the first time. Checking one does not.
+
+`verifyAttestation` is pure ECDSA recovery — it touches no network and reads no
+credentials:
+
+```js
+const digest = encodeAttestation(attestation);
+recoverAddress(digest, attestation.signatures[0]) === PADO_ADDRESS
+```
+
+So a real attestation is committed at `samples/attestation-btcusdt.json` and
+
+```bash
+npm run verify
+```
+
+checks it offline:
+
+```
+요청   : GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
+증언값 : {"price":"84566.00000000"}
+공증인 : 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6
+[1] 서명 검증 통과
+[2] 값을 한 글자 바꾼 사본 거부됨
+```
+
+Step 2 runs on every invocation, so the check is demonstrably not a no-op.
+
+The committed sample is a **public price**, not an account balance. An account
+attestation carries the exchange API key in its request header, so those are
+never committed.

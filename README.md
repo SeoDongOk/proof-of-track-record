@@ -39,7 +39,8 @@ npm run attest                   # circuit 7 — attestor slot
 npm run proof-server             # Docker, 1-2 min on first run
 npm run live                     # real ZK proof, 4508 bytes
 
-npm run attest:live              # real zkTLS session (needs Primus credentials)
+npm run verify                   # check a recorded zkTLS attestation — no account needed
+npm run attest:live              # produce a new one (needs Primus credentials)
 npm run attest:onchain           # ...and submit it on-chain (local devnet, Node 22)
 #   add --futures to attest a real Binance USDs-M account instead of a public price
 ```

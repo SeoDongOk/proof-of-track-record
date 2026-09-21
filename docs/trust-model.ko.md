@@ -287,3 +287,36 @@ API 키도 `uid` 도 체인에 가지 않는다. 올라가는 것은 `sha256(uid
 uid 기반 계좌가 **서로 다른 계좌로** 올바르게 인식됐다는 뜻이다.
 `uid` 는 스크립트 출력에서 마스킹되고 머신 밖으로 나가지 않는다.
 체인에 가는 것은 `sha256(uid)` 뿐이다.
+
+### 계정 없이 증언 검증하기
+
+새 증언을 만들려면 Primus 계정이 필요하고, 이 저장소를 처음 보는 사람에게는
+그게 장벽이다. 그런데 확인하는 데는 계정이 필요 없다.
+
+`verifyAttestation` 은 순수 ECDSA 복원이다. 네트워크도 자격증명도 쓰지 않는다.
+
+```js
+const digest = encodeAttestation(attestation);
+recoverAddress(digest, attestation.signatures[0]) === PADO_ADDRESS
+```
+
+그래서 실제 증언 하나를 `samples/attestation-btcusdt.json` 에 넣어 두었고,
+
+```bash
+npm run verify
+```
+
+가 오프라인에서 확인한다.
+
+```
+요청   : GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
+증언값 : {"price":"84566.00000000"}
+공증인 : 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6
+[1] 서명 검증 통과
+[2] 값을 한 글자 바꾼 사본 거부됨
+```
+
+2번은 매 실행마다 돈다. 검증이 형식적이지 않다는 것이 실행 결과로 남는다.
+
+커밋된 샘플은 **공개 시세**이지 계좌 잔고가 아니다. 계좌 증언은 요청 헤더에
+거래소 API 키가 들어가므로 절대 커밋하지 않는다.

@@ -1,0 +1,29 @@
+{
+  "recipient": "0x0000000000000000000000000000000000000000",
+  "request": {
+    "url": "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT",
+    "header": "",
+    "method": "GET",
+    "body": ""
+  },
+  "reponseResolve": [
+    {
+      "keyName": "price",
+      "parseType": "",
+      "parsePath": "$.price"
+    }
+  ],
+  "data": "{\"price\":\"84566.00000000\"}",
+  "attConditions": "[{\"op\":\"REVEAL_STRING\",\"field\":\"$.price\",\"reveal_id\":\"price\"}]",
+  "timestamp": 1789988952987,
+  "additionParams": "{\"algorithmType\":\"mpctls\"}",
+  "attestors": [
+    {
+      "attestorAddr": "0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6",
+      "url": "https://primuslabs.xyz"
+    }
+  ],
+  "signatures": [
+    "0x099146879a6f83dd9c977d10bee1a0aeeb6a6fd02f0769637f316bd059e3118b4b12af7a305d01ae51bbe41933d80fe7dd3b7ccda3923257b18121dc6c4a0c0b1c"
+  ]
+}
