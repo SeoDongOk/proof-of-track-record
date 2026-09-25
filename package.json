@@ -25,7 +25,8 @@
     "attest:live": "node src/attestation-live.mjs",
     "attest:binance": "node src/attestation-live.mjs --binance",
     "attest:onchain": "node src/attest-onchain.mjs",
-    "verify": "node src/verify-attestation.mjs"
+    "verify": "node src/verify-attestation.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "^0.16.0",

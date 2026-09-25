@@ -2,6 +2,13 @@
 
 English · **[한국어](README.ko.md)** — Midnight Korea Hackathon 2026
 
+![tests](https://img.shields.io/badge/tests-28%20passing-5ee0b0)
+![circuits](https://img.shields.io/badge/circuits-14-5ee0b0)
+![Compact](https://img.shields.io/badge/Compact-0.31.1-e8b45c)
+![network](https://img.shields.io/badge/Midnight-preview-8b5cf6)
+![license](https://img.shields.io/badge/license-Apache--2.0-blue)
+
+
 **Commit the strategy before you trade. Prove the result after. Neither can be revised.**
 
 A trading track record you can prove without showing anyone your trades.
@@ -39,6 +46,7 @@ npm run attest                   # circuit 7 — attestor slot
 npm run proof-server             # Docker, 1-2 min on first run
 npm run live                     # real ZK proof, 4508 bytes
 
+npm test                         # 28 tests: circuit accept/reject, units, attestation
 npm run verify                   # check a recorded zkTLS attestation — no account needed
 npm run attest:live              # produce a new one (needs Primus credentials)
 npm run attest:onchain           # ...and submit it on-chain (local devnet, Node 22)

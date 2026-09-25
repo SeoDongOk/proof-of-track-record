@@ -2,6 +2,13 @@
 
 **[English](README.md)** · 한국어 — Midnight Korea Hackathon 2026
 
+![tests](https://img.shields.io/badge/tests-28%20passing-5ee0b0)
+![circuits](https://img.shields.io/badge/circuits-14-5ee0b0)
+![Compact](https://img.shields.io/badge/Compact-0.31.1-e8b45c)
+![network](https://img.shields.io/badge/Midnight-preview-8b5cf6)
+![license](https://img.shields.io/badge/license-Apache--2.0-blue)
+
+
 **거래 전에 전략을 커밋한다. 거래 후에 결과를 증명한다. 둘 다 고칠 수 없다.**
 
 거래 내역을 보여주지 않고도 증명할 수 있는 트랙 레코드입니다.
@@ -38,6 +45,7 @@ npm run attest                   # 회로 7 — 공증인 슬롯
 npm run proof-server             # Docker, 첫 실행 1-2분
 npm run live                     # 실제 ZK 증명, 4508 바이트
 
+npm test                         # 28개 — 회로 통과/거부, 단위, 증언 검증
 npm run verify                   # 저장된 zkTLS 증언 검증 — 계정 불필요
 npm run attest:live              # 새로 하나 만들기 (Primus 자격증명 필요)
 npm run attest:onchain           # 그걸 온체인 제출까지 (로컬 devnet, Node 22)
