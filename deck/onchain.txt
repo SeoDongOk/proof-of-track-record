@@ -1,0 +1,14 @@
+Midnight Preview 공개 테스트넷
+
+  블록 821701   ContractDeploy   track_record  (회로 11개)
+  블록 821705   ContractDeploy   attestation   (회로 3개)
+  블록 821911   ContractCall     registerAttestor
+  블록 821915   ContractCall     submitAttestation    <- NAV 커밋
+  블록 821919   ContractCall     proveAttestedNav     <- ZK 증명
+  블록 848761   ContractCall     submitAttestation    <- 계정 바인딩 적용
+  블록 848765   ContractCall     proveAttestedNav
+
+  attestation  f57c3092ed7605a8f8714021eebd8b80871f6062c99044f2bb1ede7ab3acdca0
+  track_record 7869ee72a2761b29189a6ea9de24065722bd68feee004be565ad027b5f36abdf
+
+  원장에는 커밋만 있다. NAV 값은 체인에 가지 않는다.
