@@ -31,3 +31,6 @@ midnight-level-db/
 
 # archify 시각 검사 부산물 (재생성 가능)
 diagrams/*.visual-check.*
+
+# 덱 미리보기 (python deck/preview.py 로 재생성)
+deck/preview/
