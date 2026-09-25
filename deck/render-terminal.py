@@ -19,7 +19,12 @@ def font(sz, idx=0):
     except Exception: return ImageFont.load_default()
 
 def colour(line):
-    """줄 내용으로 색을 정한다. 거부는 빨강, 통과는 초록."""
+    """줄 내용으로 색을 정한다. 거부는 빨강, 통과는 초록.
+
+    'fail 0' / 'cancelled 0' 처럼 0 이 붙은 줄은 좋은 소식이다. 빨강으로 칠하면
+    테스트가 깨진 것처럼 보인다 — 실제로 그렇게 나와서 고쳤다.
+    """
+    if re.search(r'\b(fail|failed|cancelled|skipped|todo)\s+0\b', line): return DIM
     if re.search(r'거부|rejected|✗|❌|not ok|fail', line): return RED
     if re.search(r'통과|accepted|✅|^ok |검증 통과', line.strip()): return ACC
     if re.search(r'^\s*\[\d|^\s*──|^# ', line): return TITLE

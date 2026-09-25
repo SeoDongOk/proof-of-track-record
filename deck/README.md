@@ -34,3 +34,14 @@ python deck/build-deck.py         # 덱 조립
 ## 폰트
 
 터미널 캡처는 **D2Coding** 을 쓴다. Menlo 는 한글이 □ 로 깨진다.
+
+## 점검
+
+```bash
+python deck/check.py     # 슬라이드 밖 / 겹침. 통과하면 exit 0
+python deck/preview.py   # deck/preview/slide-NN.png — 눈으로 보기
+```
+
+`check.py` 는 x 범위까지 보므로 같은 행의 2단 배치를 겹침으로 오인하지 않고,
+**이미지와 텍스트가 겹치는 것**도 잡는다. 이전 점검기는 하단 넘침만 봐서
+캡처 위에 글자가 얹힌 걸 세 장이나 놓쳤다.

@@ -40,7 +40,8 @@ console.log(`  요청   : ${att.request?.method} ${att.request?.url}`);
 console.log(`  증언값 : ${typeof att.data === 'string' ? att.data : JSON.stringify(att.data)}`);
 console.log(`  공증인 : ${att.attestors?.[0]?.attestorAddr} ${DIM(`(${att.attestors?.[0]?.url ?? ''})`)}`);
 console.log(`  시각   : ${new Date(Number(att.timestamp)).toISOString()}`);
-console.log(`  모드   : ${att.additionParams?.algorithmType ?? '(n/a)'}`);
+const mode = att.additionParams?.algorithmType;
+if (mode) console.log(`  모드   : ${mode}`);
 
 const ok = sdk.verifyAttestation(att);
 console.log(`\n[1] 서명 검증 ${ok ? '통과' : RED('실패')}`);

@@ -9,4 +9,4 @@ ok 28 - witness 목록과 초기 private state 가 어긋나지 않는다
 # cancelled 0
 # skipped 0
 # todo 0
-# duration_ms 692.742458
+# duration_ms 581.994042
