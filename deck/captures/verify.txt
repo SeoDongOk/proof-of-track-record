@@ -1,0 +1,12 @@
+증언 파일: samples/attestation-btcusdt.json
+  요청   : GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
+  증언값 : {"price":"84566.00000000"}
+  공증인 : 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6 [2m(https://primuslabs.xyz)[0m
+  시각   : 2026-09-21T11:09:12.987Z
+  모드   : (n/a)
+
+[1] 서명 검증 통과
+[2] 값을 한 글자 바꾼 사본 거부됨
+
+[2m  네트워크도 Primus 계정도 쓰지 않았습니다.[0m
+[2m  서명이 값에 묶여 있다는 것만 순수 ECDSA 복원으로 확인했습니다.[0m

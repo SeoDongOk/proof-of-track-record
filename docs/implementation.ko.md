@@ -38,8 +38,10 @@
 
 | 회로 | 증명키 | 검증키 |
 |---|---|---|
-| `proveReturnAtLeast` (머클 경로 8건 검증) | 9.5 MB | 2.1 KB |
-| 나머지 5개 | 2.7 MB | 2.1 KB |
+| `proveReturnAtLeast` (머클 경로 8건 검증) | 18.6 MB | 2.1 KB |
+| 대부분의 회로 | 2.7 MB | 2.1 KB |
+| `submitAttestation` | 0.3 MB | 1.3 KB |
+| `registerAttestor` | 0.1 MB | 1.3 KB |
 
 증명은 무겁고 검증은 가볍다. 검증자는 2.1KB 짜리 키만 있으면
 트레이더의 주장을 확인할 수 있고, 거래 내역은 볼 수 없다.

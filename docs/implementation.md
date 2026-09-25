@@ -38,8 +38,10 @@ Three adversarial tests all pass:
 
 | Circuit | Prover key | Verifier key |
 |---|---|---|
-| `proveReturnAtLeast` (verifies 8 Merkle paths) | 9.5 MB | 2.1 KB |
-| The other circuits | 2.7 MB | 2.1 KB |
+| `proveReturnAtLeast` (verifies 8 Merkle paths) | 18.6 MB | 2.1 KB |
+| Most circuits | 2.7 MB | 2.1 KB |
+| `submitAttestation` | 0.3 MB | 1.3 KB |
+| `registerAttestor` | 0.1 MB | 1.3 KB |
 
 Proving is heavy; verification is light. A verifier needs only a 2.1 KB key to
 check the trader's claim — and still cannot see the trades.

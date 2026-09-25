@@ -1,0 +1,9 @@
+Exception: attestation.compact line 71 char 15:
+  potential witness-value disclosure must be declared but is not:
+    witness value potentially disclosed:
+      the value of parameter accountId of exported circuit submitAttestation at line 68
+      char 34
+    nature of the disclosure:
+      ledger operation might disclose the witness value
+    via this path through the program:
+      the first argument to insert at line 71 char 15
