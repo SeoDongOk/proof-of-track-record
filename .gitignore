@@ -35,3 +35,6 @@ diagrams/*.visual-check.*
 # 덱 미리보기 (python deck/preview.py 로 재생성)
 deck/preview/
 deck/preview-talk/
+
+# python 캐시 (deck/pptxlib.py import)
+__pycache__/
