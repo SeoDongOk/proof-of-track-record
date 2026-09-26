@@ -4,7 +4,7 @@
 build-deck.py 의 좌표를 다시 쓰지 않고 **파일에 실제로 들어간 것**을 읽는다.
 그래야 미리보기와 덱이 어긋나지 않는다.
 
-    python deck/preview.py            # deck/preview/slide-NN.png
+    python deck/preview.py [pptx] [outdir]   # 기본 deck/preview/slide-NN.png
 """
 from pptx import Presentation
 from pptx.util import Emu
@@ -45,11 +45,12 @@ def wrap(draw, text, f, max_w):
         out.append(cur)
     return out
 
-def render(path=f'deck/proof-of-track-record.pptx'):
+def render(path='deck/proof-of-track-record.pptx', out=None):
+    out = out or OUT
     prs = Presentation(path)
     W = int(prs.slide_width / EMU * SCALE); H = int(prs.slide_height / EMU * SCALE)
-    os.makedirs(OUT, exist_ok=True)
-    for old in glob.glob(f'{OUT}/*.png'): os.remove(old)
+    os.makedirs(out, exist_ok=True)
+    for old in glob.glob(f'{out}/*.png'): os.remove(old)
 
     for n, s in enumerate(prs.slides, 1):
         im = Image.new('RGB', (W, H), (12, 17, 27))
@@ -85,9 +86,10 @@ def render(path=f'deck/proof-of-track-record.pptx'):
                 for seg in wrap(d, line, f, w):
                     d.text((x, cy), seg, font=f, fill=fill)
                     cy += int(px * ls)
-        im.save(f'{OUT}/slide-{n:02d}.png')
-    print(f'  ✅ {OUT}/slide-01..{n:02d}.png  ({W}x{H})')
+        im.save(f'{out}/slide-{n:02d}.png')
+    print(f'  ✅ {out}/slide-01..{n:02d}.png  ({W}x{H})')
     return n
 
 if __name__ == '__main__':
-    render()
+    import sys
+    render(*sys.argv[1:3])

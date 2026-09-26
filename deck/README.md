@@ -1,6 +1,13 @@
 # Deck
 
-`proof-of-track-record.pptx` — 14장. Google Drive 에 올리면 Slides 로 열린다.
+두 벌이다. 숫자와 도표는 같고, 쓰임이 다르다.
+
+| 파일 | 장수 | 용도 |
+|---|---|---|
+| `proof-of-track-record.pptx` | 16 | **읽기용.** 제출 링크(Google Slides)로 심사자가 혼자 읽는다. 실행 캡처·통계·구조도까지 근거를 다 넣었다. |
+| `proof-of-track-record-talk.pptx` | 11 | **발표용.** 캡처·통계·구조도를 걷어내고 본문을 줄였다. 말로 할 것은 슬라이드에 없다. |
+
+Google Drive 에 올리면 Slides 로 열린다.
 
 ## 다시 만들기
 
@@ -9,7 +16,10 @@
 ```bash
 bash deck/capture.sh              # 터미널 출력을 실제로 실행해 캡처
 python deck/render-terminal.py    # 캡처를 이미지로
-python deck/build-deck.py         # 덱 조립
+python deck/build-deck.py         # 읽기용 조립 (16장)
+python deck/build-talk.py         # 발표용 조립 (11장)
+python deck/check.py [pptx]       # 겹침·넘침 점검
+python deck/preview.py [pptx] [outdir]   # PNG 미리보기
 ```
 
 ## 구성

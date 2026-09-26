@@ -4,7 +4,7 @@
 x 범위까지 보므로 같은 행의 2단 배치를 겹침으로 오인하지 않는다.
 이미지와 텍스트가 겹치는 것도 잡는다 — 눈으로만 보다가 놓친 적이 있다.
 
-    python deck/check.py
+    python deck/check.py [pptx]
 """
 from pptx import Presentation
 import os, sys
@@ -41,7 +41,7 @@ def overlap(a, b, pad=0.05):
     return (ax < bx + bw - pad and bx < ax + aw - pad and
             ay < by + bh - pad and by < ay + ah - pad)
 
-prs = Presentation('deck/proof-of-track-record.pptx')
+prs = Presentation(sys.argv[1] if len(sys.argv) > 1 else 'deck/proof-of-track-record.pptx')
 SW, SH = prs.slide_width / E, prs.slide_height / E
 issues = 0
 for i, s in enumerate(prs.slides, 1):
