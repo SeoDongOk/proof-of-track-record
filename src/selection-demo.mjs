@@ -1,7 +1,7 @@
 /**
  * 전략 단위 선택(strategy-level survivorship)이 왜 막히는지 실증한다.
  *
- * 시나리오: 트레이더가 전략 10개를 등록하고 그중 이긴 하나만 보여주려 한다.
+ * 시나리오: 트레이더가 전략 10개를 등록하고 그중 잘 된 하나만 보여주려 한다.
  *   커밋만 있으면    → 각 커밋은 전부 유효하다. 검증자는 9개의 존재를 모른다.
  *   레지스트리가 있으면 → 등록 개수가 공개라 "10개 중 1개"가 드러난다.
  */
@@ -39,13 +39,13 @@ const count = L().strategyCount.lookup(TRADER);
 console.log(`원장에 기록된 것: 트레이더 ${Buffer.from(TRADER).toString('hex').slice(0,8)}… 의 등록 수 = ${count}`);
 console.log('  (각 전략의 파라미터는 커밋 해시로만 존재)\n');
 
-// ── 9개는 잃고 1개만 이겼다고 하자. 이긴 것만 증명하려 한다 ──────────────────
+// ── 9개는 실패하고 1개만 성공했다고 하자. 그것만 증명하려 한다 ──────────────────
 const WINNER = 7;
 const w = strategies[WINNER - 1];
 ctx.currentPrivateState.strategyParams = w.params;
 ctx.currentPrivateState.strategyOpening = w.opening;
 
-console.log(`[1] 이긴 ${WINNER}번 전략의 성과를 증명하려 한다`);
+console.log(`[1] 성공한 ${WINNER}번 전략의 성과를 증명하려 한다`);
 const r = contract.impureCircuits.provenanceOf(ctx, TRADER, BigInt(WINNER));
 ctx = r.context;
 console.log(`    증명 통과. 그런데 회로가 함께 반환하는 값: ${r.result}`);
@@ -80,4 +80,4 @@ console.log('── 결론 ─────────────────�
 console.log('  시행 자체를 막지는 않는다. 10개를 돌리는 건 자유다.');
 console.log('  다만 몇 번 시도했는지를 숨길 수 없다.');
 console.log(`  원장이 말한다: 이 트레이더는 ${count}개를 등록했다.`);
-console.log('  "10개 중 이긴 1개"는 "1개를 골라 10번 이겼다"와 다르게 읽힌다.');
+console.log('  "10개 중 성공한 1개"는 "1개로 10번 성공했다"와 다르게 읽힌다.');

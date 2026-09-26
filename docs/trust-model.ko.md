@@ -17,7 +17,7 @@ ZK 는 "계산이 정직했다"를 증명하지 **"입력이 전부다"를 증�
 ```
 실제 거래: 5승 3패, 합계 -400bp    NAV 100,000,000 -> 96,000,000
 
-[1] 이긴 5건만 골라낸 주장 (+950bp)  -> 거부: claimed return not met
+[1] 수익 난 5건만 골라낸 주장 (+950bp)  -> 거부: claimed return not met
 [2] 실제 성과 주장 (>= -400bp)       -> 통과, 원장 기록 9600
 [3] 1bp 만 부풀려도 (>= -399bp)      -> 거부: claimed return not met
 [4] 시작 NAV 를 사후에 절반으로       -> 거부: open nav does not match its commitment

@@ -2,7 +2,7 @@
  * NAV 델타 증명 — 체리피킹이 왜 통하지 않는지 실증한다.
  *
  * 시나리오: 실제로는 8건 중 3건이 손실. 트레이더가 손실을 숨기고 싶다.
- *   회로3(거래 로그)  : 이긴 5건만 커밋하면 "합계 ≥ +X" 가 참이 된다  ← 구멍
+ *   회로3(거래 로그)  : 수익 난 5건만 커밋하면 "합계 ≥ +X" 가 참이 된다  ← 구멍
  *   회로5(NAV 델타)   : 잔고는 그대로라 같은 주장이 거부된다          ← 막힘
  */
 import * as rt from '@midnight-ntwrk/compact-runtime';
@@ -63,9 +63,9 @@ const tryProve = (label, bps) => {
   }
 };
 
-console.log('\n[1] 이긴 거래만 골라낸 주장 (회로3 이라면 통과했을 값)');
+console.log('\n[1] 수익 난 거래만 골라낸 주장 (회로3 이라면 통과했을 값)');
 const cherry = wins.reduce((a, b) => a + b, 0n);
-console.log(`    이긴 5건만 합치면 +${cherry}bp`);
+console.log(`    수익 난 5건만 합치면 +${cherry}bp`);
 tryProve(`"수익률 ≥ +${cherry}bp"`, cherry);
 
 console.log('\n[2] 실제 성과에 대한 참인 주장');
