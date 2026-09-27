@@ -38,3 +38,6 @@ deck/preview-talk/
 
 # python 캐시 (deck/pptxlib.py import)
 __pycache__/
+
+# 미리보기 PNG 로 만든 PDF (폰 열람용, 재생성 가능)
+deck/*.pdf
