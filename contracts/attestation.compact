@@ -2,7 +2,7 @@ pragma language_version 0.23;
 import CompactStandardLibrary;
 
 // ============================================================================
-// Attestation Registry — 제3자 증언
+// Attestation Registry — 제3자 공증
 //
 // track_record.compact 와 **별도 컨트랙트**로 배포한다. 두 가지 이유다.
 //
@@ -12,7 +12,7 @@ import CompactStandardLibrary;
 //     블록 한도를 넘는다 (RpcError 1010: Transaction would exhaust the block
 //     limits). 11개/23KB 는 통과한다.
 //
-// 트레이더 쪽 컨트랙트는 이 레지스트리의 주소를 참조해 증언을 읽는다.
+// 트레이더 쪽 컨트랙트는 이 레지스트리의 주소를 참조해 공증을 읽는다.
 // ============================================================================
 
 // 회로 5(NAV 델타)까지 와도 마지막 가정이 남는다. NAV 를 처음부터 지어내면
@@ -44,7 +44,7 @@ export ledger attestorRegistered: Boolean;
 /** 거래소 계좌ID -> 공증된 NAV 커밋 */
 export ledger attestations: Map<Bytes<32>, Bytes<32>>;
 
-/** 공증인이 증언한 계좌 수 (공개) */
+/** 공증인이 공증한 계좌 수 (공개) */
 export ledger attestationCount: Counter;
 
 /** 공증인을 등록한다. */
@@ -55,7 +55,7 @@ export circuit registerAttestor(id: Bytes<32>): [] {
 }
 
 /**
- * 공증인이 증언을 올린다.
+ * 공증인이 공증을 올린다.
  *
  * 여기 들어오는 커밋은 공증인이 만든 것이다. 트레이더가 아니다.
  * 서명 자체는 이 트랜잭션을 올린 주체가 공증인인지로 확인한다

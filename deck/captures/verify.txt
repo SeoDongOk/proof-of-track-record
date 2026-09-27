@@ -1,6 +1,6 @@
-증언 파일: samples/attestation-btcusdt.json
+공증 파일: samples/attestation-btcusdt.json
   요청   : GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
-  증언값 : {"price":"84566.00000000"}
+  공증값 : {"price":"84566.00000000"}
   공증인 : 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6 [2m(https://primuslabs.xyz)[0m
   시각   : 2026-09-21T11:09:12.987Z
 

@@ -31,7 +31,7 @@ const zk = new FileZkConfigProvider(new URL('../build/attestation/', import.meta
 const prover = httpClientProvingProvider(PS, zk, { timeout: 300000 });
 await prover.check(pre, C);
 const t=Date.now(); const proof=await prover.prove(pre, C);
-console.log(`제3자 증언 ZK 증명: ${proof.length} bytes (${((Date.now()-t)/1000).toFixed(1)}s)`);
+console.log(`제3자 공증 ZK 증명: ${proof.length} bytes (${((Date.now()-t)/1000).toFixed(1)}s)`);
 console.log(`  주장: "내 NAV 가 공증인이 올린 커밋을 연다"`);
 console.log(`  비공개: NAV 값 ${NAV}`);
 console.log(`  preimage ${pre.length} bytes, transcript ${pd.publicTranscript.length} ops`);

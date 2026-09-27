@@ -1,5 +1,5 @@
 /**
- * 저장된 zkTLS 증언을 검증한다. **자격증명도 네트워크도 필요 없다.**
+ * 저장된 zkTLS 공증을 검증한다. **자격증명도 네트워크도 필요 없다.**
  *
  *   node src/verify-attestation.mjs [파일]
  *
@@ -12,10 +12,10 @@
  *   const digest = encodeAttestation(attestation);
  *   recoverAddress(digest, attestation.signatures[0]) === PADO_ADDRESS
  *
- * 네트워크도 appId 도 쓰지 않는다. 그래서 실제 증언 하나를 저장소에 넣어 두면
+ * 네트워크도 appId 도 쓰지 않는다. 그래서 실제 공증 하나를 저장소에 넣어 두면
  * 누구나 오프라인에서 서명을 확인할 수 있다.
  *
- * 여기 들어 있는 것은 **공개 시세** 증언이다. 계좌 증언은 요청 헤더에
+ * 여기 들어 있는 것은 **공개 시세** 공증이다. 계좌 공증은 요청 헤더에
  * API 키가 들어가므로 커밋하지 않는다.
  */
 import { readFileSync } from 'node:fs';
@@ -27,7 +27,7 @@ let att;
 try {
   att = JSON.parse(readFileSync(file, 'utf8'));
 } catch (e) {
-  console.error(`${RED('✗ 증언 파일을 읽을 수 없습니다')}: ${file}`);
+  console.error(`${RED('✗ 공증 파일을 읽을 수 없습니다')}: ${file}`);
   console.error(DIM(`  ${e.message}`));
   process.exit(1);
 }
@@ -35,9 +35,9 @@ try {
 const { PrimusCoreTLS } = await import('@primuslabs/zktls-core-sdk');
 const sdk = new PrimusCoreTLS();          // init() 를 부르지 않는다 — 자격증명 불필요
 
-console.log(`증언 파일: ${file}`);
+console.log(`공증 파일: ${file}`);
 console.log(`  요청   : ${att.request?.method} ${att.request?.url}`);
-console.log(`  증언값 : ${typeof att.data === 'string' ? att.data : JSON.stringify(att.data)}`);
+console.log(`  공증값 : ${typeof att.data === 'string' ? att.data : JSON.stringify(att.data)}`);
 console.log(`  공증인 : ${att.attestors?.[0]?.attestorAddr} ${DIM(`(${att.attestors?.[0]?.url ?? ''})`)}`);
 console.log(`  시각   : ${new Date(Number(att.timestamp)).toISOString()}`);
 const mode = att.additionParams?.algorithmType;
@@ -46,7 +46,7 @@ if (mode) console.log(`  모드   : ${mode}`);
 const ok = sdk.verifyAttestation(att);
 console.log(`\n[1] 서명 검증 ${ok ? '통과' : RED('실패')}`);
 if (!ok) {
-  console.error(RED('  이 증언은 신뢰할 수 없습니다.'));
+  console.error(RED('  이 공증은 신뢰할 수 없습니다.'));
   process.exit(1);
 }
 

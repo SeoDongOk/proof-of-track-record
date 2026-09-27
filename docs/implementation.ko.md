@@ -205,7 +205,7 @@ git clone … && npm install     OK
 npm run build                  9 circuits
 npm run demo                   5/5 ✅   (증명 서버 불필요)
 npm run nav                    체리피킹 거부 포함 5건 판정 ✅
-npm run live                   ZK 증명 4508 bytes ✅
+npm run live                   ZK 증명 4,508 bytes ✅
 npm run deploy           온체인 배포, 블록 580 ✅ (Node 22)
 ```
 
@@ -279,8 +279,8 @@ npm run live:real    # 배치 0, 1 실제 ZK 증명
 **두 배치 모두** 증명합니다.
 
 ```
-batch 0 [COP,CRM,CVX,DE,FCX,GILD,JNJ,MRK]     실제 -356bp -> 주장 ">= -400bp"  4508B / 32.9s
-batch 1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  실제 -285bp -> 주장 ">= -300bp"  4508B / 31.9s
+batch 0 [COP,CRM,CVX,DE,FCX,GILD,JNJ,MRK]     실제 -356bp -> 주장 ">= -400bp"  4,508B / 32.9s
+batch 1 [MRNA,MSFT,NEM,NVDA,REGN,TGT,VLO,VZ]  실제 -285bp -> 주장 ">= -300bp"  4,508B / 31.9s
 
 거짓 주장 ">= 0bp" -> 회로가 거부 (claimed floor not met)
 ```
@@ -309,7 +309,7 @@ devnet 에 기록이 묶여 있지 않다는 뜻이다.
 블록 821919  ContractCall     proveAttestedNav    <- ZK 증명
 ```
 
-증언된 값은 실제 바이낸스 USDs-M 선물 계좌다.
+공증된 값은 실제 바이낸스 USDs-M 선물 계좌다.
 `totalMarginBalance = 20.71157147` USDT, Primus 공증인
 `0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6` 이 읽었다. 원장에는 커밋
 `ca89703830c04bd0534bd10e…` 만 있고 NAV 값 자체는 체인에 가지 않는다.

@@ -149,8 +149,8 @@ const providers = {
 const initialPrivateState = { navValue: att.nav, navSalt: att.salt };
 
 // ── 3) 컨트랙트 확보 ─────────────────────────────────────────────────────────
-// 컨트랙트는 공증인을 1회만, 계좌당 증언도 1회만 받는다(의도된 설계).
-// 그래서 기존 배포를 재사용하되, 이 계좌가 이미 증언되어 있으면 새로 배포한다.
+// 컨트랙트는 공증인을 1회만, 계좌당 공증도 1회만 받는다(의도된 설계).
+// 그래서 기존 배포를 재사용하되, 이 계좌가 이미 공증되어 있으면 새로 배포한다.
 const RECORD = `deployed-attest-${NET}.json`;
 let instance = null, address = null;
 
@@ -162,7 +162,7 @@ const usable = async (addr) => {
     const L = ledger(st.data);
     return {
       registered: L.attestorRegistered,
-      // 다른 공증인이 등록된 컨트랙트는 쓸 수 없다. 우리 증언이 아니게 된다.
+      // 다른 공증인이 등록된 컨트랙트는 쓸 수 없다. 우리 공증이 아니게 된다.
       sameAttestor: !L.attestorRegistered || eq(L.attestorId, attestor.id()),
       attested: L.attestations.member(att.accountId),
     };
@@ -182,7 +182,7 @@ if (existsSync(RECORD)) {
   } else if (info && !info.sameAttestor) {
     console.log(DIM(`[3] 기존 컨트랙트에 다른 공증인이 등록되어 있어 새로 배포합니다.`));
   } else if (info?.attested) {
-    console.log(DIM(`[3] 이 계좌는 기존 컨트랙트에 이미 증언되어 있어 새로 배포합니다.`));
+    console.log(DIM(`[3] 이 계좌는 기존 컨트랙트에 이미 공증되어 있어 새로 배포합니다.`));
   } else {
     console.log(DIM(`[3] 기존 주소를 인디서에서 찾지 못해 새로 배포합니다.`));
   }
@@ -230,7 +230,7 @@ console.log(`\n[5] 인디서에서 원장 상태 확인`);
 const state = await providers.publicDataProvider.queryContractState(address);
 const L = ledger(state.data);
 console.log(`    공증인      : ${hex(L.attestorId, 24)}…`);
-console.log(`    증언된 계좌 : ${L.attestationCount}`);
+console.log(`    공증된 계좌 : ${L.attestationCount}`);
 console.log(`    계좌 등재?  : ${L.attestations.member(att.accountId)}`);
 const onchain = L.attestations.lookup(att.accountId);
 console.log(`    저장된 커밋 : ${hex(onchain, 24)}…`);

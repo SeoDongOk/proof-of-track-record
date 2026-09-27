@@ -121,7 +121,7 @@ if (att.identity) {
 }
 
 // 서명 검증이 형식적이지 않다는 확인. 값을 한 글자 바꾸면 거부되어야 한다.
-console.log(`\n[2b] 증언 값을 변조하면 검증이 거부하는가`);
+console.log(`\n[2b] 공증 값을 변조하면 검증이 거부하는가`);
 const tampered = JSON.parse(JSON.stringify(att.attestation));
 if (typeof tampered.data === 'string') tampered.data = tampered.data.replace(/[0-9]/, '9');
 else if (tampered.data && typeof tampered.data === 'object') {
@@ -133,7 +133,7 @@ try { tamperOk = attestor.verify(tampered) === false; }
 catch { tamperOk = true; }               // throw 도 거부로 친다
 console.log(tamperOk
   ? `    거부됨. 서명이 값에 묶여 있다.`
-  : `    ${RED('❌❌ 변조된 증언이 검증을 통과했다')}`);
+  : `    ${RED('❌❌ 변조된 공증이 검증을 통과했다')}`);
 if (!tamperOk) process.exitCode = 1;
 
 // ── 3~5) 온체인 제출 + ZK 증명 ───────────────────────────────────────────────
@@ -158,14 +158,14 @@ ctx = contract.impureCircuits.registerAttestor(ctx, attestor.id()).context;
 console.log(`\n[3] 공증인 등록: ${hex(attestor.id(), 12)}…`);
 
 ctx = contract.impureCircuits.submitAttestation(ctx, att.accountId, att.navCommitment).context;
-console.log(`[4] 증언 제출`);
+console.log(`[4] 공증 제출`);
 console.log(`    계좌: ${hex(att.accountId, 12)}…  ${DIM(att.identity
   ? '(공증된 uid 의 해시. uid 도 키도 체인에 없다)'
   : '(API 키의 해시. 키는 체인에 없다)')}`);
 console.log(`    커밋: ${hex(att.navCommitment)}…`);
 console.log(`    원장에 NAV 값 ${att.nav} 은 ${RED('없다')}`);
 
-console.log(`\n[5] 증언된 NAV 로 ZK 증명`);
+console.log(`\n[5] 공증된 NAV 로 ZK 증명`);
 Object.assign(ctx.currentPrivateState, { navValue: att.nav, navSalt: att.salt });
 try {
   ctx = contract.impureCircuits.proveAttestedNav(ctx, att.accountId).context;
@@ -186,10 +186,10 @@ try {
 }
 
 console.log(`\n── 신뢰 모델 ────────────────────────────────────`);
-console.log(`  데모 공증인: NAV 를 넘겨받아 그대로 증언 → 신뢰 가치 없음`);
+console.log(`  데모 공증인: NAV 를 넘겨받아 그대로 공증 → 신뢰 가치 없음`);
 console.log(`  이 경로   : 공증인 네트워크가 TLS 세션에서 직접 읽음`);
 console.log(`  남는 가정 : Primus 공증인 그룹의 정직성, TLS 무결성`);
-console.log(`  증언된 계좌 수(공개): ${L().attestationCount}`);
+console.log(`  공증된 계좌 수(공개): ${L().attestationCount}`);
 
 await attestor.close?.();
 process.exit(process.exitCode ?? 0);

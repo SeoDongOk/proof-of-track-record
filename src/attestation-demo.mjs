@@ -1,5 +1,5 @@
 /**
- * 제3자 증언 — 자기증명을 끊는다.
+ * 제3자 공증 — 자기증명을 끊는다.
  *
  * ⚠️ 이 데모에서 공증인은 우리가 겸한다. 아키텍처는 실제지만 "자기가 자기에게
  *    서명" 하는 셈이라 설득력은 반감된다. 회로 동작만 보기 위한 것이다.
@@ -52,14 +52,14 @@ try {
   console.log('    ❌❌ 공증 없이 통과됨');
 } catch (e) {
   console.log(`    거부: ${e.message.split('\n')[0]}`);
-  console.log('    → 공증인이 증언하기 전에는 아무것도 주장할 수 없다.');
+  console.log('    → 공증인이 공증하기 전에는 아무것도 주장할 수 없다.');
 }
 
-// ── 공증인이 실제 잔고를 증언 ────────────────────────────────────────────────
+// ── 공증인이 실제 잔고를 공증 ────────────────────────────────────────────────
 // 커밋을 만드는 주체가 공증인이라는 점이 핵심. 트레이더가 아니다.
 const attested = rt.persistentCommit(u48, REAL_NAV, SALT);
 ctx = contract.impureCircuits.submitAttestation(ctx, ACCOUNT, attested).context;
-console.log(`\n공증인이 계좌 ${Buffer.from(ACCOUNT).toString('hex').slice(0, 8)}… 의 NAV 를 증언`);
+console.log(`\n공증인이 계좌 ${Buffer.from(ACCOUNT).toString('hex').slice(0, 8)}… 의 NAV 를 공증`);
 console.log(`    원장에 오른 것: 커밋 ${Buffer.from(attested).toString('hex').slice(0, 16)}…`);
 console.log(`    NAV 값 ${REAL_NAV} 은 원장에 없다`);
 
@@ -84,11 +84,11 @@ try {
 }
 
 // ── 다른 계좌인 척 ───────────────────────────────────────────────────────────
-console.log('\n[4] 증언되지 않은 계좌로 주장');
+console.log('\n[4] 공증되지 않은 계좌로 주장');
 ctx.currentPrivateState.navValue = REAL_NAV;
 try {
   contract.impureCircuits.proveAttestedNav(ctx, b32(0xE9));
-  console.log('    ❌❌ 미증언 계좌가 통과됨');
+  console.log('    ❌❌ 미공증 계좌가 통과됨');
 } catch (e) {
   console.log(`    거부: ${e.message.split('\n')[0]}`);
 }
@@ -96,7 +96,7 @@ try {
 console.log('\n── 신뢰 모델이 어떻게 바뀌나 ───────────────────────');
 console.log('  전: "트레이더가 정직하다" 를 믿어야 했다');
 console.log('  후: "공증인이 정직하다" 를 믿는다');
-console.log('  공증인은 거래소 협조 없이 TLS 세션만으로 증언할 수 있다(zkTLS).');
-console.log(`  증언된 계좌 수(공개): ${L().attestationCount}`);
+console.log('  공증인은 거래소 협조 없이 TLS 세션만으로 공증할 수 있다(zkTLS).');
+console.log(`  공증된 계좌 수(공개): ${L().attestationCount}`);
 console.log('\n  Sybil 대응: accountId 를 KYC 된 거래소 계좌에 묶으면');
 console.log('  신원 10개를 만들려면 KYC 계좌 10개가 필요하다.');

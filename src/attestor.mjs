@@ -29,7 +29,7 @@ const sha = (s) => new Uint8Array(createHash('sha256').update(s).digest());
 /**
  * 데모용 공증인. **실제 거래소를 보지 않는다.**
  *
- * 주어진 NAV 를 그대로 증언하므로 신뢰 가치가 없다. 아키텍처 배선을
+ * 주어진 NAV 를 그대로 공증하므로 신뢰 가치가 없다. 아키텍처 배선을
  * 보여주기 위한 것이며, 실전에서는 아래 zkTLS 구현체로 교체한다.
  */
 export function demoAttestor(id = sha('demo-attestor')) {
@@ -66,7 +66,7 @@ export function demoAttestor(id = sha('demo-attestor')) {
  * @param {'proxytls'|'mpctls'} [opts.algorithmType]
  *   proxytls — 공증인이 TLS 트래픽을 중계하며 암호문을 기록. 빠르다.
  *   mpctls   — 공증인과 클라이언트가 MPC 로 세션 키를 나눠 갖는다. 클라이언트가
- *              응답을 고칠 수 없어 더 강하지만 느리다. NAV 증언에는 이쪽이 맞다.
+ *              응답을 고칠 수 없어 더 강하지만 느리다. NAV 공증에는 이쪽이 맞다.
  */
 export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', timeoutMs = 120_000 } = {}) {
   if (!appId || !appSecret) {
@@ -88,7 +88,7 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
      *
      * 배치를 쓰는 이유: 계정 식별자와 NAV 를 **한 세션에서** 읽어야 한다.
      * 따로 두 번 공증하면 서로 다른 계정의 uid 와 잔고를 짝지어 제출할 수 있다.
-     * 같은 증언 안에 있어야 "이 uid 의 잔고가 이것"이 성립한다.
+     * 같은 공증 안에 있어야 "이 uid 의 잔고가 이것"이 성립한다.
      *
      * @param {object} adapter src/exchanges.mjs 의 어댑터
      * @returns {Promise<Attestation & {raw: object, attestation: object}>}
@@ -120,14 +120,14 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
 
       // 공증인 서명 검증. 이게 false 면 그 뒤는 전부 무의미하다.
       if (sdk.verifyAttestation(attestation) !== true) {
-        throw new Error('primusAttestor: 공증 서명 검증 실패 — 증언을 신뢰할 수 없다');
+        throw new Error('primusAttestor: 공증 서명 검증 실패 — 공증을 신뢰할 수 없다');
       }
 
       const read = (keyName, parsePath) => {
         const v = extractValue(attestation, keyName);
         if (v === undefined) {
           throw new Error(
-            `primusAttestor: 증언에서 '${keyName}' 를 찾지 못했다.\n` +
+            `primusAttestor: 공증에서 '${keyName}' 를 찾지 못했다.\n` +
             `  parsePath 가 응답 구조와 맞는지 확인: ${parsePath}`);
         }
         return v;
@@ -140,7 +140,7 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
       const rawNav = read(navSpec.keyName, navSpec.parsePath);
       const nav = navSpec.toNav(rawNav);
 
-      // 계정 식별자가 증언에 들어 있으면 그걸로 accountId 를 만든다.
+      // 계정 식별자가 공증에 들어 있으면 그걸로 accountId 를 만든다.
       // 없으면 어댑터가 주는 값(보통 API 키 해시)으로 떨어진다 — 시빌에 약하다.
       let accountId, identity = null;
       if (idSpec) {
@@ -162,7 +162,7 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
       };
     },
 
-    /** 증언을 독립적으로 재검증한다. 변조된 증언은 false. */
+    /** 공증을 독립적으로 재검증한다. 변조된 공증은 false. */
     verify(attestation) {
       if (!sdk) throw new Error('primusAttestor: attest() 를 먼저 호출해야 한다');
       return sdk.verifyAttestation(attestation);
@@ -172,7 +172,7 @@ export function primusAttestor({ appId, appSecret, algorithmType = 'mpctls', tim
   };
 }
 
-/** 증언 객체에서 값 하나를 꺼낸다. SDK 버전에 따라 data 가 문자열이거나 객체다. */
+/** 공증 객체에서 값 하나를 꺼낸다. SDK 버전에 따라 data 가 문자열이거나 객체다. */
 function extractValue(attestation, keyName) {
   const d = attestation?.data;
   const obj = typeof d === 'string' ? safeJson(d) : d;

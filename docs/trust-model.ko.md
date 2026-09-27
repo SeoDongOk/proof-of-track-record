@@ -24,7 +24,7 @@ ZK 는 "계산이 정직했다"를 증명하지 **"입력이 전부다"를 증�
 ```
 
 `npm run nav` 로 재현. `npm run nav:proof` 는 실제 ZK 증명을 만든다
-(4508 bytes, 7.9s — 머클 경로가 없어 회로 3보다 가볍다).
+(4,508 bytes, 7.9s — 머클 경로가 없어 회로 3보다 가볍다).
 
 ### 자기증명을 끊는 법 — 공증인 슬롯
 
@@ -47,17 +47,17 @@ Obscura 는 TEE + 거래소 API 로, zkTLS 는 공증인으로 푼다. 이름만
 
 ```
 공증 없이 NAV 주장      -> 거부: no attestation for that account
-공증인이 실제 잔고 증언  -> 원장에는 커밋만 오른다
+공증인이 실제 잔고 공증  -> 원장에는 커밋만 오른다
 진짜 NAV 로 증명        -> 통과, NAV 는 비공개
 NAV 를 3배로 부풀림      -> 거부: nav does not open the attested commitment
-미증언 계좌로 주장      -> 거부
+미공증 계좌로 주장      -> 거부
 ```
 
 `npm run attest` 로 재현. `npm run attest:proof` 는 실제 ZK 증명을 만든다
-(4508 bytes, 2.0s — 여기서 가장 가벼운 회로).
+(4,508 bytes, 2.0s — 여기서 가장 가벼운 회로).
 
 **데모 공증인은 신뢰 가치가 없다.** 실제 거래소를 보지 않고 주어진 NAV 를
-그대로 증언한다. 배선을 보여주기 위한 것이고 `npm run attest` 가 이걸 쓴다.
+그대로 공증한다. 배선을 보여주기 위한 것이고 `npm run attest` 가 이걸 쓴다.
 
 **실제 경로는 구현되어 있다.** `src/attestor.mjs` 의 `primusAttestor()` 가
 Primus 공증인 네트워크를 통해 실제 zkTLS 세션을 돌려 거래소 엔드포인트를 직접
@@ -116,27 +116,27 @@ Primus 공증인 네트워크를 통해 실제 zkTLS 세션을 돌려 거래소 
 ```
 [1] zkTLS 공증 요청  (public-ticker:BTCUSDT, mpctls)
     GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
-    증언 대상: $.price
+    공증 대상: $.price
 
 [2] 공증인 서명 검증 통과  (4.8s)
     읽어온 값: price = 77246.23000000
     NAV(Uint<48>): 77246230000
     공증인: 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6 (https://primuslabs.xyz)
 
-[2b] 증언 값을 변조하면 검증이 거부하는가
+[2b] 공증 값을 변조하면 검증이 거부하는가
     거부됨. 서명이 값에 묶여 있다.
 
 [3] 공증인 등록: 8d9572b08ced…
-[4] 증언 제출
+[4] 공증 제출
     계좌: bdf148e7ad11…  (API 키의 해시. 키는 체인에 없다)
     커밋: 7aa9334a6aa9e873…
     원장에 NAV 값 77246230000 은 없다
 
-[5] 증언된 NAV 로 ZK 증명  -> 통과
+[5] 공증된 NAV 로 ZK 증명  -> 통과
 [6] NAV 를 3배로 부풀림     -> 거부: nav does not open the attested commitment
 ```
 
-증언에는 공증인 주소와 응답에 대한 ECDSA 서명이 들어 있다. 값의 숫자 하나만
+공증에는 공증인 주소와 응답에 대한 ECDSA 서명이 들어 있다. 값의 숫자 하나만
 바꿔도 `verifyAttestation()` 이 `false` 를 돌려준다. **2b** 단계가 매 실행마다
 그 확인을 하므로, 검증이 형식적이지 않다는 것이 실행 결과로 남는다.
 
@@ -164,14 +164,14 @@ Primus 공증인 네트워크를 통해 실제 zkTLS 세션을 돌려 거래소 
 ```
 [1] zkTLS 공증  (binance-futures, mpctls)
     GET https://fapi.binance.com/fapi/v3/account?recvWindow=60000&timestamp=...&signature=...
-    증언 대상: $.totalMarginBalance
+    공증 대상: $.totalMarginBalance
 [2] 공증인 서명 검증 통과  (5.7s)
     읽어온 값: totalMarginBalance = 21.46679236
     NAV(Uint<48>): 21466792
-[2b] 변조된 증언 -> 거부
-[4] 증언 제출  계좌 dc16576b458f...  (API 키의 sha256)
+[2b] 변조된 공증 -> 거부
+[4] 공증 제출  계좌 dc16576b458f...  (API 키의 sha256)
     온체인: submitAttestation 블록 8204, proveAttestedNav 블록 8207
-[5] 증언된 NAV 로 ZK 증명 -> 통과
+[5] 공증된 NAV 로 ZK 증명 -> 통과
 [6] NAV 3배 부풀림 -> 거부
 ```
 
@@ -208,7 +208,7 @@ API 키는 `X-MBX-APIKEY` 헤더로 공증인 네트워크를 지나간다. 시�
 
 [5] 인디서에서 원장 되읽기
     공증인      : 8d9572b08ced5bfc50a217da…
-    증언된 계좌 : 1
+    공증된 계좌 : 1
     저장된 커밋 : 9bdddb0dadec916fe9266299…
     로컬 커밋과 일치: 예
     NAV 77186010000 은 원장에 없다 — 커밋만 있다
@@ -223,7 +223,7 @@ API 키는 `X-MBX-APIKEY` 헤더로 공증인 네트워크를 지나간다. 시�
 블록 5440  ContractCall     tx a52102ccb82f6880dcb4…
 ```
 
-컨트랙트는 설계상 공증인 1명, 계좌당 증언 1건만 받는다. 그래서 스크립트가
+컨트랙트는 설계상 공증인 1명, 계좌당 공증 1건만 받는다. 그래서 스크립트가
 원장을 먼저 읽고, 기존 컨트랙트가 이미 쓰였으면 새로 배포한다.
 
 **알아둘 만한 수수료 함정.** 회로 호출 트랜잭션은 비용이 작아 지갑이 수수료를
@@ -281,16 +281,16 @@ API 키도 `uid` 도 체인에 가지 않는다. 올라가는 것은 `sha256(uid
 블록 848765  ContractCall  proveAttestedNav    ZK 증명
 ```
 
-증언된 NAV 는 같은 실계좌의 `totalMarginBalance = 18.94934329` 다
+공증된 NAV 는 같은 실계좌의 `totalMarginBalance = 18.94934329` 다
 (앞선 실행의 20.71 에서 움직였다 — 봇이 계속 거래 중이다).
 컨트랙트의 `attestationCount` 가 이제 2 다. 첫 실행의 키 기반 계좌와 이번의
 uid 기반 계좌가 **서로 다른 계좌로** 올바르게 인식됐다는 뜻이다.
 `uid` 는 스크립트 출력에서 마스킹되고 머신 밖으로 나가지 않는다.
 체인에 가는 것은 `sha256(uid)` 뿐이다.
 
-### 계정 없이 증언 검증하기
+### 계정 없이 공증 검증하기
 
-새 증언을 만들려면 Primus 계정이 필요하고, 이 저장소를 처음 보는 사람에게는
+새 공증을 만들려면 Primus 계정이 필요하고, 이 저장소를 처음 보는 사람에게는
 그게 장벽이다. 그런데 확인하는 데는 계정이 필요 없다.
 
 `verifyAttestation` 은 순수 ECDSA 복원이다. 네트워크도 자격증명도 쓰지 않는다.
@@ -300,7 +300,7 @@ const digest = encodeAttestation(attestation);
 recoverAddress(digest, attestation.signatures[0]) === PADO_ADDRESS
 ```
 
-그래서 실제 증언 하나를 `samples/attestation-btcusdt.json` 에 넣어 두었고,
+그래서 실제 공증 하나를 `samples/attestation-btcusdt.json` 에 넣어 두었고,
 
 ```bash
 npm run verify
@@ -310,7 +310,7 @@ npm run verify
 
 ```
 요청   : GET https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
-증언값 : {"price":"84566.00000000"}
+공증값 : {"price":"84566.00000000"}
 공증인 : 0xdb736b13e2f522dbe18b2015d0291e4b193d8ef6
 [1] 서명 검증 통과
 [2] 값을 한 글자 바꾼 사본 거부됨
@@ -318,5 +318,5 @@ npm run verify
 
 2번은 매 실행마다 돈다. 검증이 형식적이지 않다는 것이 실행 결과로 남는다.
 
-커밋된 샘플은 **공개 시세**이지 계좌 잔고가 아니다. 계좌 증언은 요청 헤더에
+커밋된 샘플은 **공개 시세**이지 계좌 잔고가 아니다. 계좌 공증은 요청 헤더에
 거래소 API 키가 들어가므로 절대 커밋하지 않는다.

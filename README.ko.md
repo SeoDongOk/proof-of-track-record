@@ -43,10 +43,10 @@ npm run selection                # 회로 6 — 전략 레지스트리
 npm run attest                   # 회로 7 — 공증인 슬롯
 
 npm run proof-server             # Docker, 첫 실행 1-2분
-npm run live                     # 실제 ZK 증명, 4508 바이트
+npm run live                     # 실제 ZK 증명, 4,508 바이트
 
-npm test                         # 28개 — 회로 통과/거부, 단위, 증언 검증
-npm run verify                   # 저장된 zkTLS 증언 검증 — 계정 불필요
+npm test                         # 28개 — 회로 통과/거부, 단위, 공증 검증
+npm run verify                   # 저장된 zkTLS 공증 검증 — 계정 불필요
 npm run attest:live              # 새로 하나 만들기 (Primus 자격증명 필요)
 npm run attest:onchain           # 그걸 온체인 제출까지 (로컬 devnet, Node 22)
 #   --futures 를 붙이면 공개 시세 대신 실제 바이낸스 선물 계좌를 증명합니다
