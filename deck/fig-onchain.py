@@ -31,7 +31,7 @@ for x, (blk, ko, fn, c) in zip(xs, events):
     ax.text(x, .42, ko, ha='center', va='bottom', fontsize=13, color=c, weight='bold')
     ax.text(x, .22, fn, ha='center', va='bottom', fontsize=8.5, color=DIM, family='Menlo')
     ax.text(x, -.32, f'{blk:,}'.replace(',', ''), ha='center', va='top', fontsize=12, color=FG)
-ax.text(-.15, -.9, '블록 번호  ·  Midnight Preview  ·  공개 인디서에서 누구나 조회할 수 있다',
+ax.text(-.15, -.9, '블록 번호  ·  Midnight Preview  ·  공개 인디서에서 누구나 조회 가능',
         ha='left', va='top', fontsize=10, color=DIM)
 ax.set_xlim(-.4, len(events) - .6); ax.set_ylim(-1.1, 1.0)
 fig.savefig('deck/figs/onchain.png', facecolor=BG, bbox_inches='tight', pad_inches=.15)

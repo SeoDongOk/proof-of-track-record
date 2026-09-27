@@ -5,7 +5,7 @@
 | 파일 | 장수 | 용도 |
 |---|---|---|
 | `proof-of-track-record.pptx` | 16 | **읽기용.** 제출 링크(Google Slides)로 심사자가 혼자 읽는다. 실행 캡처·통계·구조도까지 근거를 다 넣었다. |
-| `proof-of-track-record-talk.pptx` | 11 | **발표용.** 캡처·통계·구조도를 걷어내고 본문을 줄였다. 말로 할 것은 슬라이드에 없다. |
+| `proof-of-track-record-talk.pptx` | 12 | **발표용.** 캡처·통계를 걷어내고 본문을 줄였다. 문장은 3인칭·명사형. 말로 할 것은 슬라이드에 없다. |
 
 Google Drive 에 올리면 Slides 로 열린다.
 
@@ -16,6 +16,10 @@ Google Drive 에 올리면 Slides 로 열린다.
 ```bash
 bash deck/capture.sh              # 터미널 출력을 실제로 실행해 캡처
 python deck/render-terminal.py    # 캡처를 이미지로
+python deck/fig-nav.py            # 도표: 회로 5 (값은 src/nav-demo.mjs 와 동일)
+python deck/fig-industry.py       # 도표: 업계 비교
+python deck/fig-flow.py           # 도표: 구조 (발표용)
+python deck/fig-onchain.py        # 도표: Preview 타임라인
 python deck/build-deck.py         # 읽기용 조립 (16장)
 python deck/build-talk.py         # 발표용 조립 (11장)
 python deck/check.py [pptx]       # 겹침·넘침 점검
@@ -28,7 +32,8 @@ python deck/preview.py [pptx] [outdir]   # PNG 미리보기
 |---|---|---|
 | figs/backtest.png | 생존 편향 제거 전후 | Algorithmic_Trading_YL |
 | figs/stats.png | Newey-West p 값, Deflated Sharpe | 같음 |
-| figs/nav.png | 거래 로그 vs NAV | 회로 5 설계 |
+| figs/nav.png | 거래 로그 vs NAV | src/nav-demo.mjs 와 같은 값 |
+| figs/flow.png | 구조 도식 (체인 밖 / 체인 위) | 발표용 |
 | figs/onchain.png | Preview 블록 7건 | 공개 인디서 |
 | figs/cap-nav.png | `npm run nav` **실제 출력** | captures/nav.txt |
 | figs/cap-verify.png | `npm run verify` **실제 출력** | captures/verify.txt |
